@@ -4,6 +4,8 @@ import {
   type ChatMessage,
   type KnowledgeEntry,
   type LocaleCode,
+  type ProductCard,
+  type ProductItem,
   type PublicChatIntent,
   type Site,
 } from '@chatbot/contracts';
@@ -20,6 +22,7 @@ export interface ContactDetails {
 export interface ChatEngineInput {
   site: Site;
   knowledgeEntries: KnowledgeEntry[];
+  productItems?: ProductItem[];
   history: ChatMessage[];
   message: string;
   locale: LocaleCode;
@@ -35,11 +38,18 @@ export interface ChatEngineResult {
   action: string;
   reason: string | null;
   metadata: Record<string, unknown>;
+  productCards?: ProductCard[];
 }
 
 interface KnowledgeMatch {
   entry: KnowledgeEntry;
   score: number;
+}
+
+interface ProductMatch {
+  product: ProductItem;
+  score: number;
+  reason: string;
 }
 
 export async function resolveChat(input: ChatEngineInput): Promise<ChatEngineResult> {
@@ -79,6 +89,22 @@ export async function resolveChat(input: ChatEngineInput): Promise<ChatEngineRes
       needsHuman: true,
       metadata: {},
       reason: 'Visitor asked for a person or support handoff',
+    });
+  }
+
+  const productMatches = findProductMatches(input.productItems ?? [], text, input.locale);
+  if (productMatches.length > 0 && shouldShowProductMatches(site, normalized, productMatches[0]?.score ?? 0)) {
+    const cards = productMatches.slice(0, 3).map((match) => productCard(match, input.locale));
+    return deterministicResult({
+      reply: productReply(input.locale, cards.length),
+      intent: 'product_recommendation',
+      action: 'product_recommendation',
+      metadata: {
+        productIds: cards.map((card) => card.id),
+        productSkus: cards.map((card) => card.sku).filter(Boolean),
+        productCount: cards.length,
+      },
+      productCards: cards,
     });
   }
 
@@ -168,6 +194,27 @@ export function findKnowledgeMatch(
   return candidates[0] ?? null;
 }
 
+export function findProductMatches(products: ProductItem[], text: string, locale: LocaleCode): ProductMatch[] {
+  const normalized = normalizeSearchText(text);
+  if (!normalized) return [];
+  const tokens = new Set(normalized.split(/\s+/).filter((token) => token.length >= 2));
+
+  return products
+    .filter((product) => product.enabled)
+    .map((product) => {
+      const score = productScore(product, normalized, tokens);
+      if (score <= 0) return null;
+      return {
+        product,
+        score,
+        reason: productReason(product, locale, normalized),
+      };
+    })
+    .filter((match): match is ProductMatch => match !== null)
+    .sort((a, b) => b.score - a.score || availabilityRank(a.product.availability) - availabilityRank(b.product.availability))
+    .slice(0, 6);
+}
+
 export function sanitizeAssistantReply(text: string): string {
   return text
     .replace(/```[\s\S]*?```/g, '')
@@ -188,6 +235,7 @@ function deterministicResult(input: {
   needsHuman?: boolean;
   reason?: string | null;
   metadata: Record<string, unknown>;
+  productCards?: ProductCard[];
 }): ChatEngineResult {
   return {
     reply: sanitizeAssistantReply(input.reply),
@@ -198,6 +246,7 @@ function deterministicResult(input: {
     action: input.action,
     reason: input.reason ?? null,
     metadata: input.metadata,
+    productCards: input.productCards,
   };
 }
 
@@ -220,6 +269,7 @@ async function completeWithAi(input: ChatEngineInput): Promise<string> {
     input.site.config.systemPrompt,
     'Always disclose through behavior that you are an AI assistant if asked.',
     'Do not invent prices, discounts, order status, payment status, delivery status, legal terms, or unsupported operational facts.',
+    'Use product feed facts only when product data is explicitly supplied by the system. Do not invent availability or product details.',
     'If the approved knowledge below does not answer the question, ask for contact details and say the team can follow up.',
     knowledgeContext ? `Approved knowledge:\n${knowledgeContext}` : 'Approved knowledge is currently empty.',
   ].join('\n\n');
@@ -236,6 +286,97 @@ async function completeWithAi(input: ChatEngineInput): Promise<string> {
   } catch {
     return '';
   }
+}
+
+function shouldShowProductMatches(site: Site, normalized: string, topScore: number): boolean {
+  if (site.config.mode === 'commerce_readonly' || site.config.mode === 'commerce_actions') return true;
+  return topScore >= 8 || hasProductSearchIntent(normalized);
+}
+
+function productScore(product: ProductItem, normalized: string, tokens: Set<string>): number {
+  let score = 0;
+  const fields = [
+    { value: product.sku, weight: 10 },
+    { value: product.title, weight: 5 },
+    { value: product.brand, weight: 4 },
+    { value: product.category, weight: 3 },
+    { value: product.description, weight: 1.5 },
+    { value: Object.values(product.attributes).join(' '), weight: 2 },
+  ];
+  for (const field of fields) {
+    const value = normalizeSearchText(field.value ?? '');
+    if (!value) continue;
+    if (normalized.includes(value)) score += field.weight * 2;
+    for (const token of tokens) {
+      if (token.length >= 3 && value.includes(token)) score += field.weight;
+    }
+  }
+  for (const keyword of product.keywords) {
+    const value = normalizeSearchText(keyword);
+    if (!value) continue;
+    if (normalized.includes(value) || tokens.has(value)) score += 4;
+  }
+  if (hasProductSearchIntent(normalized) && score > 0) score += 2;
+  return score;
+}
+
+function productCard(match: ProductMatch, locale: LocaleCode): ProductCard {
+  const product = match.product;
+  return {
+    id: product.id,
+    title: product.title,
+    sku: product.sku,
+    brand: product.brand,
+    category: product.category,
+    description: product.description,
+    price: product.price,
+    currency: product.currency,
+    priceLabel: product.price === null ? null : priceLabel(product.price, product.currency),
+    availability: product.availability,
+    imageUrl: product.imageUrl,
+    productUrl: product.productUrl,
+    reason: match.reason || (locale === 'bg' ? 'Съвпада с търсенето ви.' : 'Matches your search.'),
+  };
+}
+
+function productReply(locale: LocaleCode, count: number): string {
+  if (locale === 'bg') {
+    return count === 1
+      ? 'Намерих един подходящ продукт от каталога. Проверете цената, наличността и детайлите в картата.'
+      : `Намерих ${count} подходящи продукта от каталога. Проверете цените, наличността и детайлите в картите.`;
+  }
+  return count === 1
+    ? 'I found one matching product from the catalog. Check the card for price, availability, and details.'
+    : `I found ${count} matching products from the catalog. Check the cards for price, availability, and details.`;
+}
+
+function productReason(product: ProductItem, locale: LocaleCode, normalized: string): string {
+  if (product.sku && normalized.includes(normalizeSearchText(product.sku))) {
+    return locale === 'bg' ? `Съвпада със SKU ${product.sku}.` : `Matches SKU ${product.sku}.`;
+  }
+  if (product.brand && normalized.includes(normalizeSearchText(product.brand))) {
+    return locale === 'bg' ? `Съвпада с марка ${product.brand}.` : `Matches brand ${product.brand}.`;
+  }
+  if (product.category && normalized.includes(normalizeSearchText(product.category))) {
+    return locale === 'bg' ? `Съвпада с категория ${product.category}.` : `Matches category ${product.category}.`;
+  }
+  return locale === 'bg' ? 'Съвпада с търсенето ви.' : 'Matches your search.';
+}
+
+function priceLabel(price: number, currency: string | null): string {
+  return `${price.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${currency ?? ''}`.trim();
+}
+
+function availabilityRank(value: ProductItem['availability']): number {
+  if (value === 'in_stock') return 0;
+  if (value === 'preorder') return 1;
+  if (value === 'unknown') return 2;
+  return 3;
+}
+
+function hasProductSearchIntent(normalized: string): boolean {
+  return /\b(product|products|recommend|recommendation|show|find|catalog|item|items|sku|model)\b/i.test(normalized)
+    || /(продукт|продукти|препоръч|покажи|намери|каталог|артикул|модел|стока|стоки)/i.test(normalized);
 }
 
 function leadReply(site: Site, locale: LocaleCode, contact: ContactDetails): string {

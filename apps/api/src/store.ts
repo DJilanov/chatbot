@@ -9,6 +9,7 @@ import type {
   Lead,
   Organization,
   OrganizationUser,
+  ProductItem,
   Site,
   SiteConfig,
   SiteIntegrations,
@@ -23,6 +24,7 @@ export interface AppData {
   sites: Site[];
   knowledgeEntries: KnowledgeEntry[];
   knowledgeRevisions: KnowledgeRevision[];
+  productItems: ProductItem[];
   conversations: Conversation[];
   messages: ChatMessage[];
   leads: Lead[];
@@ -37,6 +39,7 @@ export const EMPTY_DATA: AppData = {
   sites: [],
   knowledgeEntries: [],
   knowledgeRevisions: [],
+  productItems: [],
   conversations: [],
   messages: [],
   leads: [],
@@ -87,6 +90,7 @@ function normalizeAppData(value: Partial<AppData>): AppData {
     sites: Array.isArray(value.sites) ? value.sites.map(normalizeSite) : [],
     knowledgeEntries: Array.isArray(value.knowledgeEntries) ? value.knowledgeEntries : [],
     knowledgeRevisions: Array.isArray(value.knowledgeRevisions) ? value.knowledgeRevisions : [],
+    productItems: Array.isArray(value.productItems) ? value.productItems.map(normalizeProductItem) : [],
     conversations: Array.isArray(value.conversations) ? value.conversations : [],
     messages: Array.isArray(value.messages) ? value.messages : [],
     leads: Array.isArray(value.leads) ? value.leads : [],
@@ -108,6 +112,36 @@ function normalizeOrganizationUser(user: OrganizationUser): OrganizationUser {
     ...user,
     disabled: Boolean(user.disabled),
     lastSeenAt: typeof user.lastSeenAt === 'string' ? user.lastSeenAt : null,
+  };
+}
+
+function normalizeProductItem(product: ProductItem): ProductItem {
+  const attributes: Record<string, string> = {};
+  if (product.attributes && typeof product.attributes === 'object') {
+    for (const [key, value] of Object.entries(product.attributes)) {
+      if (typeof value === 'string') attributes[key] = value;
+    }
+  }
+  return {
+    ...product,
+    enabled: typeof product.enabled === 'boolean' ? product.enabled : true,
+    sku: typeof product.sku === 'string' && product.sku.trim() ? product.sku : null,
+    brand: typeof product.brand === 'string' && product.brand.trim() ? product.brand : null,
+    category: typeof product.category === 'string' && product.category.trim() ? product.category : null,
+    description: typeof product.description === 'string' && product.description.trim() ? product.description : null,
+    price: typeof product.price === 'number' && Number.isFinite(product.price) ? product.price : null,
+    currency: typeof product.currency === 'string' && product.currency.trim() ? product.currency : null,
+    availability:
+      product.availability === 'in_stock' ||
+      product.availability === 'out_of_stock' ||
+      product.availability === 'preorder' ||
+      product.availability === 'unknown'
+        ? product.availability
+        : 'unknown',
+    imageUrl: typeof product.imageUrl === 'string' && product.imageUrl.trim() ? product.imageUrl : null,
+    productUrl: typeof product.productUrl === 'string' && product.productUrl.trim() ? product.productUrl : null,
+    attributes,
+    keywords: Array.isArray(product.keywords) ? product.keywords.filter((item) => typeof item === 'string') : [],
   };
 }
 

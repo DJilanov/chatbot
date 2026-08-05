@@ -16,6 +16,7 @@ const state = {
   sites: [],
   billingPlans: [],
   missingAnswers: [],
+  productItems: [],
   importDrafts: [],
   selectedSiteId: localStorage.getItem('admin:selectedSiteId') || '',
 };
@@ -70,6 +71,11 @@ const adminTranslations = {
     'Import FAQ drafts': 'Импортирай FAQ чернови',
     'PDF or DOCX file': 'PDF или DOCX файл',
     'Import file draft': 'Импортирай файл',
+    'Product feed': 'Продуктов фийд',
+    'Feed format': 'Формат на фийда',
+    'Auto detect': 'Автоматично',
+    'Replace current products': 'Замени текущите продукти',
+    'Import products': 'Импортирай продукти',
     Title: 'Заглавие',
     Keywords: 'Ключови думи',
     'English answer': 'Отговор на английски',
@@ -116,6 +122,8 @@ const adminTranslations = {
     'Paste bootstrap or user token': 'Поставете bootstrap или потребителски токен',
     'Customer requested erasure': 'Клиентът поиска изтриване',
     'pricing, quote, cost': 'цени, оферта, стойност',
+    'sku,title,brand,category,price,currency,availability,product_url,image_url,description\nSKU-1,Lenovo ThinkPad T14,Lenovo,Laptops,1299,BGN,in_stock,https://example.com/p/sku-1,https://example.com/p/sku-1.jpg,Business laptop':
+      'sku,title,brand,category,price,currency,availability,product_url,image_url,description\nSKU-1,Lenovo ThinkPad T14,Lenovo,Лаптопи,1299,BGN,in_stock,https://example.com/p/sku-1,https://example.com/p/sku-1.jpg,Бизнес лаптоп',
     'Question: How does delivery work?\nAnswer: We deliver within two business days.\n\nQuestion: What is the warranty?\nAnswer: Warranty requests are reviewed by our team.':
       'Въпрос: Как работи доставката?\nОтговор: Доставяме до два работни дни.\n\nВъпрос: Каква е гаранцията?\nОтговор: Гаранционните заявки се преглеждат от нашия екип.',
     'Connected.': 'Свързано.',
@@ -135,6 +143,11 @@ const adminTranslations = {
     'Imported {count} document drafts from {fileName}. Review before saving.':
       'Импортирани са {count} чернови от {fileName}. Прегледайте преди запис.',
     'Choose a PDF or DOCX file.': 'Изберете PDF или DOCX файл.',
+    'Imported {imported} products and updated {updated}. {skipped} rows skipped.':
+      'Импортирани са {imported} продукта и са обновени {updated}. Пропуснати редове: {skipped}.',
+    'Product saved.': 'Продуктът е запазен.',
+    'Product deleted.': 'Продуктът е изтрит.',
+    'No products imported yet.': 'Все още няма импортирани продукти.',
     'Knowledge draft prepared. Add the approved answer before saving.':
       'Черновата е подготвена. Добавете одобрен отговор преди запис.',
     'Knowledge draft loaded. Review it before saving.': 'Черновата е заредена. Прегледайте я преди запис.',
@@ -161,6 +174,7 @@ const adminTranslations = {
     'Resolution note': 'Бележка за решение',
     Disabled: 'Деактивиран',
     Save: 'Запази',
+    Delete: 'Изтрий',
     Lead: 'Запитване',
     'Shown once. If email notifications are configured, an invitation email was also sent.':
       'Показва се еднократно. Ако имейл известията са настроени, поканата е изпратена и по имейл.',
@@ -173,6 +187,8 @@ const adminTranslations = {
     open: 'отворени',
     users: 'потребители',
     user: 'потребител',
+    products: 'продукта',
+    product: 'продукт',
     'company info': 'информация за компанията',
     services: 'услуги',
     pricing: 'цени',
@@ -205,6 +221,9 @@ const adminTranslations = {
     fallback: 'fallback',
     negative_feedback: 'негативна оценка',
     failed_action: 'неуспешно действие',
+    product_feed_import: 'импорт на продукти',
+    product_recommendation: 'препоръка на продукт',
+    product_clicked: 'клик върху продукт',
     answered: 'отговорено',
     pending_customer: 'чака клиент',
     pending_staff: 'чака екип',
@@ -214,6 +233,10 @@ const adminTranslations = {
     ai: 'AI',
     customer_click: 'клик от клиент',
     system: 'система',
+    in_stock: 'наличен',
+    out_of_stock: 'изчерпан',
+    preorder: 'предварителна поръчка',
+    unknown: 'неизвестно',
   },
 };
 
@@ -362,6 +385,7 @@ function clearWorkspace() {
   state.sites = [];
   state.billingPlans = [];
   state.missingAnswers = [];
+  state.productItems = [];
   state.importDrafts = [];
   state.selectedSiteId = '';
   localStorage.removeItem('admin:selectedSiteId');
@@ -372,6 +396,8 @@ function clearWorkspace() {
   qs('#knowledge-count').textContent = countLabel(0, 'entry', 'entries', t('entries'));
   qs('#knowledge-list').innerHTML = '';
   qs('#knowledge-import-draft-list').innerHTML = '';
+  qs('#product-count').textContent = countLabel(0, 'product', 'products', t('products'));
+  qs('#product-list').innerHTML = '';
   qs('#missing-answer-count').textContent = countLabel(0, 'open', 'open', t('open'));
   qs('#missing-answer-list').innerHTML = '';
   qs('#user-count').textContent = countLabel(0, 'user', 'users', t('users'));
@@ -427,8 +453,9 @@ async function loadSelectedSite() {
   if (!state.selectedSiteId) return;
   const site = await api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}`);
   fillConfig(site);
-  const [knowledge, missingAnswers, analytics, billing, users, leads, actions, supportTickets] = await Promise.all([
+  const [knowledge, products, missingAnswers, analytics, billing, users, leads, actions, supportTickets] = await Promise.all([
     api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/knowledge`),
+    api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/products`),
     api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/missing-answers`),
     api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/analytics?days=30`),
     optionalApi(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/billing`),
@@ -438,7 +465,9 @@ async function loadSelectedSite() {
     api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/support-tickets`),
   ]);
   state.missingAnswers = missingAnswers;
+  state.productItems = products;
   renderKnowledge(knowledge);
+  renderProducts(products);
   renderMissingAnswers(missingAnswers);
   renderAnalytics(analytics);
   renderBilling(billing);
@@ -492,6 +521,51 @@ function renderKnowledge(entries) {
       `,
     )
     .join('');
+}
+
+function renderProducts(products) {
+  state.productItems = products;
+  qs('#product-count').textContent = countLabel(products.length, 'product', 'products', t('products'));
+  const list = qs('#product-list');
+  list.innerHTML =
+    products
+      .slice(0, 60)
+      .map(
+        (product) => `
+          <article class="record product-record">
+            ${product.imageUrl ? `<img class="product-thumb" src="${escapeHtml(product.imageUrl)}" alt="" loading="lazy" />` : ''}
+            <div>
+              <div class="record-heading">
+                <strong>${escapeHtml(product.title)}</strong>
+                <span class="pill">${escapeHtml(translatedLabel(product.availability))}</span>
+              </div>
+              <p>${escapeHtml(productMeta(product))}</p>
+              <p>${escapeHtml(product.description || productAttributesPreview(product.attributes))}</p>
+              <div class="record-actions">
+                <label class="checkbox-row">
+                  <input type="checkbox" data-product-enabled="${escapeHtml(product.id)}" ${product.enabled ? 'checked' : ''} />
+                  ${escapeHtml(t('Active'))}
+                </label>
+                <button type="button" data-save-product="${escapeHtml(product.id)}">${escapeHtml(t('Save'))}</button>
+                <button class="secondary-button" type="button" data-delete-product="${escapeHtml(product.id)}">${escapeHtml(t('Delete'))}</button>
+              </div>
+            </div>
+          </article>
+        `,
+      )
+      .join('') || `<p>${escapeHtml(t('No products imported yet.'))}</p>`;
+  list.querySelectorAll('button[data-save-product]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const productId = button.dataset.saveProduct;
+      const enabled = qs(`[data-product-enabled="${cssEscape(productId)}"]`)?.checked ?? true;
+      void updateProduct(productId, enabled).catch((error) => setStatus(error.message, 'error'));
+    });
+  });
+  list.querySelectorAll('button[data-delete-product]').forEach((button) => {
+    button.addEventListener('click', () => {
+      void deleteProduct(button.dataset.deleteProduct).catch((error) => setStatus(error.message, 'error'));
+    });
+  });
 }
 
 function renderMissingAnswers(items) {
@@ -695,9 +769,10 @@ function renderActions(actions) {
       .map(
         (action) => `
           <article class="record">
-            <strong>${escapeHtml(action.action)} | ${escapeHtml(translatedLabel(action.status))}</strong>
+            <strong>${escapeHtml(translatedLabel(action.action))} | ${escapeHtml(translatedLabel(action.status))}</strong>
             <p>${escapeHtml(action.sourceText || '-')}</p>
             <p>${escapeHtml(action.reply || '')}</p>
+            ${actionMetadata(action) ? `<p>${escapeHtml(actionMetadata(action))}</p>` : ''}
           </article>
         `,
       )
@@ -904,6 +979,49 @@ async function importKnowledgeDocument(event) {
   );
 }
 
+async function importProducts(event) {
+  event.preventDefault();
+  if (!state.selectedSiteId) return;
+  const values = formRecord(event.currentTarget);
+  const response = await api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/products/import`, {
+    method: 'POST',
+    body: JSON.stringify({
+      format: values.format === 'auto' ? undefined : values.format,
+      content: values.content,
+      replace: values.replace === 'on',
+    }),
+  });
+  renderProducts(response.products);
+  await loadSelectedSite();
+  setStatus(
+    t('Imported {imported} products and updated {updated}. {skipped} rows skipped.', {
+      imported: response.imported,
+      updated: response.updated,
+      skipped: response.skippedRows,
+    }),
+    'ok',
+  );
+}
+
+async function updateProduct(productId, enabled) {
+  if (!state.selectedSiteId || !productId) return;
+  await api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/products/${encodeURIComponent(productId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ enabled }),
+  });
+  await loadSelectedSite();
+  setStatus('Product saved.', 'ok');
+}
+
+async function deleteProduct(productId) {
+  if (!state.selectedSiteId || !productId) return;
+  await api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/products/${encodeURIComponent(productId)}`, {
+    method: 'DELETE',
+  });
+  await loadSelectedSite();
+  setStatus('Product deleted.', 'ok');
+}
+
 function draftKnowledgeFromMissingAnswer(actionId) {
   const item = state.missingAnswers.find((missingAnswer) => missingAnswer.id === actionId);
   if (!item) return;
@@ -1098,6 +1216,41 @@ function localizedAnswer(answer) {
   return answer.en || answer.bg || '';
 }
 
+function productMeta(product) {
+  return [
+    product.sku ? `SKU ${product.sku}` : '',
+    product.brand,
+    product.category,
+    productPriceLabel(product),
+  ]
+    .filter(Boolean)
+    .join(' | ');
+}
+
+function productPriceLabel(product) {
+  if (typeof product.price !== 'number') return '';
+  return `${product.price.toLocaleString(state.locale === 'bg' ? 'bg-BG' : 'en-US', {
+    maximumFractionDigits: 2,
+  })} ${product.currency || ''}`.trim();
+}
+
+function productAttributesPreview(attributes) {
+  if (!attributes || typeof attributes !== 'object') return '';
+  return Object.entries(attributes)
+    .slice(0, 6)
+    .map(([key, value]) => `${key}: ${value}`)
+    .join(' | ');
+}
+
+function actionMetadata(action) {
+  if (!action.metadata || typeof action.metadata !== 'object') return '';
+  return Object.entries(action.metadata)
+    .filter(([, value]) => value !== null && value !== undefined && value !== '')
+    .slice(0, 6)
+    .map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : String(value)}`)
+    .join(' | ');
+}
+
 function draftPreview(draft) {
   return localizedAnswer(draft.answer || {}).slice(0, 220);
 }
@@ -1290,6 +1443,9 @@ qs('#knowledge-faq-import-form').addEventListener('submit', (event) => {
 });
 qs('#knowledge-document-import-form').addEventListener('submit', (event) => {
   void importKnowledgeDocument(event).catch((error) => setStatus(error.message, 'error'));
+});
+qs('#product-import-form').addEventListener('submit', (event) => {
+  void importProducts(event).catch((error) => setStatus(error.message, 'error'));
 });
 qs('#refresh-button').addEventListener('click', () => {
   void loadAll().catch((error) => setStatus(error.message, 'error'));

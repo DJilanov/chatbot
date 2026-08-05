@@ -332,6 +332,22 @@ label {
   line-height: 1.45;
 }
 
+.product-record {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.product-thumb {
+  width: 72px;
+  aspect-ratio: 1;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  object-fit: cover;
+  background: #fff;
+}
+
 .record pre {
   max-height: 280px;
   overflow: auto;
@@ -423,5 +439,9 @@ progress {
   .record-actions,
   .usage-row {
     display: grid;
+  }
+
+  .product-record {
+    grid-template-columns: 1fr;
   }
 }

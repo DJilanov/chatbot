@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { AiProvider } from '@chatbot/ai';
-import type { KnowledgeEntry, Site } from '@chatbot/contracts';
+import type { KnowledgeEntry, ProductItem, Site } from '@chatbot/contracts';
 import { defaultSiteConfig } from './defaults.js';
 import { findKnowledgeMatch, resolveChat, sanitizeAssistantReply } from './chat-engine.js';
 
@@ -25,6 +25,28 @@ const knowledge: KnowledgeEntry[] = [
     title: 'Returns',
     keywords: ['return', 'refund', 'връщане'],
     answer: { en: 'Returns are accepted within 14 days.', bg: 'Връщане се приема до 14 дни.' },
+    createdAt: site.createdAt,
+    updatedAt: site.updatedAt,
+  },
+];
+
+const products: ProductItem[] = [
+  {
+    id: 'prod_lenovo_t14',
+    siteId: site.id,
+    enabled: true,
+    sku: 'T14-BG',
+    title: 'Lenovo ThinkPad T14',
+    brand: 'Lenovo',
+    category: 'Laptops',
+    description: 'Business laptop with 16GB memory.',
+    price: 1299,
+    currency: 'BGN',
+    availability: 'in_stock',
+    imageUrl: 'https://example.com/t14.jpg',
+    productUrl: 'https://example.com/products/t14',
+    attributes: { memory: '16GB' },
+    keywords: ['thinkpad', 'lenovo', 'лаптоп'],
     createdAt: site.createdAt,
     updatedAt: site.updatedAt,
   },
@@ -59,6 +81,23 @@ test('pricing requests use configured safe pricing message', async () => {
   });
   assert.equal(result.intent, 'pricing');
   assert.equal(result.needsLeadDetails, true);
+});
+
+test('product matches return product recommendation cards', async () => {
+  const result = await resolveChat({
+    site: { ...site, config: { ...site.config, mode: 'commerce_readonly' } },
+    knowledgeEntries: knowledge,
+    productItems: products,
+    history: [],
+    message: 'Do you have a Lenovo laptop?',
+    locale: 'en',
+    aiProvider: nullProvider,
+  });
+  assert.equal(result.intent, 'product_recommendation');
+  assert.equal(result.action, 'product_recommendation');
+  assert.equal(result.productCards?.length, 1);
+  assert.equal(result.productCards?.[0]?.sku, 'T14-BG');
+  assert.match(result.reply, /matching products|one matching product/);
 });
 
 test('deterministic replies use the requested locale', async () => {

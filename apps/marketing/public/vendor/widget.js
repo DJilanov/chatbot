@@ -146,7 +146,7 @@ const persisted = {
         if (messages) {
             appendMessage(messages, 'assistant', currentConfig.welcomeMessage, false);
             for (const item of persisted.messages)
-                appendMessage(messages, item.role, item.text, true);
+                appendMessage(messages, item.role, item.text, true, item.productCards);
             if (loading)
                 appendMessage(messages, 'assistant', copy.typing, true);
             messages.scrollTop = messages.scrollHeight;
@@ -224,7 +224,11 @@ const persisted = {
             conversationId = result.conversationId;
             visitorId = result.visitorId;
             leadVisible = result.needsLeadDetails;
-            persisted.messages.push({ role: 'assistant', text: result.reply });
+            persisted.messages.push({
+                role: 'assistant',
+                text: result.reply,
+                productCards: normalizeProductCards(result.productCards),
+            });
             trimPersistedMessages();
             writeState(storageKey, { conversationId, visitorId, messages: persisted.messages });
             emit('response', {
@@ -232,6 +236,7 @@ const persisted = {
                 needsLeadDetails: result.needsLeadDetails,
                 needsHuman: result.needsHuman,
                 actionId: result.actionId,
+                productCards: result.productCards ?? [],
             });
         }
         catch {
@@ -296,13 +301,19 @@ const persisted = {
             render();
         }
     }
-    function appendMessage(container, role, text, withFeedback) {
+    function appendMessage(container, role, text, withFeedback, productCards = []) {
         const row = document.createElement('div');
         row.className = `chatbot-message-row ${role}`;
+        const stack = document.createElement('div');
+        stack.className = 'chatbot-message-stack';
         const bubble = document.createElement('div');
         bubble.className = 'chatbot-message';
         bubble.textContent = text;
-        row.append(bubble);
+        stack.append(bubble);
+        const safeProductCards = normalizeProductCards(productCards);
+        if (role === 'assistant' && safeProductCards.length > 0) {
+            stack.append(renderProductCards(safeProductCards));
+        }
         if (role === 'assistant' && withFeedback) {
             const copy = widgetCopy(currentLocale);
             const feedback = document.createElement('div');
@@ -316,7 +327,37 @@ const persisted = {
             });
             bubble.append(feedback);
         }
+        row.append(stack);
         container.append(row);
+    }
+    function renderProductCards(cards) {
+        const copy = widgetCopy(currentLocale);
+        const list = document.createElement('div');
+        list.className = 'chatbot-product-cards';
+        list.innerHTML = cards
+            .map((card) => `
+          <article class="chatbot-product-card ${card.imageUrl ? '' : 'no-image'}">
+            ${card.imageUrl ? `<img src="${escapeHtml(card.imageUrl)}" alt="" loading="lazy" />` : ''}
+            <div class="chatbot-product-body">
+              <strong>${escapeHtml(card.title)}</strong>
+              <span>${escapeHtml(productCardMeta(card, copy))}</span>
+              ${card.description ? `<p>${escapeHtml(card.description)}</p>` : ''}
+              <small>${escapeHtml(card.reason)}</small>
+              ${card.productUrl
+            ? `<a href="${escapeHtml(card.productUrl)}" target="_blank" rel="noopener" data-product-id="${escapeHtml(card.id)}">${escapeHtml(copy.viewProduct)}</a>`
+            : ''}
+            </div>
+          </article>
+        `)
+            .join('');
+        list.querySelectorAll('a[data-product-id]').forEach((link) => {
+            link.addEventListener('click', () => {
+                const card = cards.find((item) => item.id === link.dataset['productId']);
+                if (card)
+                    void sendProductClick(card);
+            });
+        });
+        return list;
     }
     async function sendFeedback(rating, assistantMessage) {
         if (!config)
@@ -334,6 +375,34 @@ const persisted = {
         }).catch(() => undefined);
         emit('feedback', { rating });
     }
+    async function sendProductClick(card) {
+        if (!config)
+            return;
+        emit('product_clicked', {
+            productId: card.id,
+            sku: card.sku,
+            title: card.title,
+            productUrl: card.productUrl,
+        });
+        await fetch(`${apiUrl}/public/sites/${encodeURIComponent(siteId)}/actions`, {
+            method: 'POST',
+            keepalive: true,
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({
+                conversationId,
+                action: 'product_clicked',
+                status: 'completed',
+                confidence: 'customer_click',
+                locale: activeLocale(config),
+                metadata: {
+                    productId: card.id,
+                    sku: card.sku,
+                    title: card.title,
+                    productUrl: card.productUrl,
+                },
+            }),
+        }).catch(() => undefined);
+    }
     function emit(eventName, payload) {
         for (const handler of handlers.get(eventName) ?? [])
             handler(payload);
@@ -346,12 +415,8 @@ function readState(key) {
         persisted.visitorId = typeof parsed.visitorId === 'string' ? parsed.visitorId : '';
         persisted.messages = Array.isArray(parsed.messages)
             ? parsed.messages
-                .filter((item) => Boolean(item &&
-                typeof item === 'object' &&
-                item.role &&
-                (item.role === 'user' ||
-                    item.role === 'assistant') &&
-                typeof item.text === 'string'))
+                .map(normalizePersistedMessage)
+                .filter((item) => item !== null)
                 .slice(-30)
             : [];
     }
@@ -379,6 +444,75 @@ function textField(formData, key) {
 }
 function lastUserMessage() {
     return [...persisted.messages].reverse().find((message) => message.role === 'user')?.text;
+}
+function normalizePersistedMessage(value) {
+    if (!value || typeof value !== 'object')
+        return null;
+    const record = value;
+    if (record.role !== 'user' && record.role !== 'assistant')
+        return null;
+    if (typeof record.text !== 'string')
+        return null;
+    const productCards = normalizeProductCards(record.productCards);
+    return {
+        role: record.role,
+        text: record.text,
+        productCards: productCards.length > 0 ? productCards : undefined,
+    };
+}
+function normalizeProductCards(value) {
+    if (!Array.isArray(value))
+        return [];
+    return value
+        .map((item) => {
+        if (!item || typeof item !== 'object')
+            return null;
+        const record = item;
+        const id = textOrNull(record['id']);
+        const title = textOrNull(record['title']);
+        if (!id || !title)
+            return null;
+        const availability = record['availability'];
+        return {
+            id,
+            title,
+            sku: textOrNull(record['sku']),
+            brand: textOrNull(record['brand']),
+            category: textOrNull(record['category']),
+            description: textOrNull(record['description']),
+            priceLabel: textOrNull(record['priceLabel']),
+            availability: availability === 'in_stock' || availability === 'out_of_stock' || availability === 'preorder'
+                ? availability
+                : 'unknown',
+            imageUrl: textOrNull(record['imageUrl']),
+            productUrl: textOrNull(record['productUrl']),
+            reason: textOrNull(record['reason']) ?? '',
+        };
+    })
+        .filter((item) => item !== null)
+        .slice(0, 4);
+}
+function textOrNull(value) {
+    return typeof value === 'string' && value.trim() ? value.trim().slice(0, 1000) : null;
+}
+function productCardMeta(card, copy) {
+    return [
+        card.brand,
+        card.category,
+        card.priceLabel,
+        availabilityLabel(card.availability, copy),
+    ]
+        .filter(Boolean)
+        .join(' | ');
+}
+function availabilityLabel(availability, copy) {
+    if (availability === 'in_stock')
+        return copy.inStock;
+    if (availability === 'out_of_stock')
+        return copy.outOfStock;
+    if (availability === 'preorder')
+        return copy.preorder;
+    return copy.unknownStock;
 }
 function activeLocale(config) {
     const locale = preferredLocale({
@@ -434,6 +568,11 @@ const widgetCopyBg = {
     sendContact: 'Изпрати контакт',
     sendMessage: 'Изпрати съобщение',
     typing: 'Пише...',
+    viewProduct: 'Виж продукта',
+    inStock: 'Наличен',
+    outOfStock: 'Изчерпан',
+    preorder: 'Предварителна поръчка',
+    unknownStock: 'Наличност по запитване',
 };
 const widgetCopyEn = {
     aiNote: 'AI assistant. Do not share sensitive payment or password data.',
@@ -456,6 +595,11 @@ const widgetCopyEn = {
     sendContact: 'Send contact',
     sendMessage: 'Send message',
     typing: 'Typing...',
+    viewProduct: 'View product',
+    inStock: 'In stock',
+    outOfStock: 'Out of stock',
+    preorder: 'Preorder',
+    unknownStock: 'Availability on request',
 };
 function createVisitorId() {
     if ('randomUUID' in crypto)
@@ -485,10 +629,23 @@ function css(branding) {
     .chatbot-messages { flex: 1; overflow: auto; padding: 14px 12px; background: #fff; }
     .chatbot-message-row { display: flex; margin-bottom: 10px; }
     .chatbot-message-row.user { justify-content: flex-end; }
+    .chatbot-message-stack { display: grid; gap: 8px; max-width: 92%; }
+    .chatbot-message-row.user .chatbot-message-stack { justify-items: end; max-width: 82%; }
     .chatbot-message { max-width: 82%; white-space: pre-wrap; border-radius: 12px; padding: 9px 11px; font-size: 13px; line-height: 18px; color: #172033; background: #eef2f7; }
+    .chatbot-message-stack .chatbot-message { max-width: 100%; }
     .chatbot-message-row.user .chatbot-message { color: #fff; background: ${branding.primaryColor}; }
     .chatbot-feedback { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
     .chatbot-feedback button { border: 1px solid #cfd6e2; border-radius: 6px; background: #fff; color: #334155; padding: 4px 7px; font-size: 11px; cursor: pointer; }
+    .chatbot-product-cards { display: grid; gap: 8px; }
+    .chatbot-product-card { display: grid; grid-template-columns: 68px 1fr; gap: 10px; overflow: hidden; border: 1px solid #dbe3ef; border-radius: 8px; background: #fff; }
+    .chatbot-product-card.no-image { grid-template-columns: 1fr; }
+    .chatbot-product-card img { width: 68px; height: 100%; min-height: 88px; object-fit: cover; background: #f8fafc; }
+    .chatbot-product-body { display: grid; gap: 4px; min-width: 0; padding: 8px 8px 8px 0; }
+    .chatbot-product-card.no-image .chatbot-product-body { padding: 8px; }
+    .chatbot-product-body strong { overflow-wrap: anywhere; color: #172033; font-size: 13px; line-height: 17px; }
+    .chatbot-product-body span, .chatbot-product-body p, .chatbot-product-body small { margin: 0; color: #64748b; font-size: 11px; line-height: 15px; }
+    .chatbot-product-body p { display: -webkit-box; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .chatbot-product-body a { justify-self: start; border-radius: 6px; background: ${branding.primaryColor}; color: #fff; padding: 6px 8px; font-size: 11px; font-weight: 800; line-height: 14px; text-decoration: none; }
     .chatbot-lead { display: none; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px 12px; border-top: 1px solid #eef1f5; background: #f8fafc; }
     .chatbot-lead.is-open { display: grid; }
     .chatbot-lead input { min-width: 0; border: 1px solid #cfd6e2; border-radius: 8px; padding: 8px; font: inherit; font-size: 12px; }

@@ -299,6 +299,37 @@
 
         <section class="panel">
           <div class="panel-heading">
+            <h2>Product feed</h2>
+            <span id="product-count" class="pill">0 products</span>
+          </div>
+          <form id="product-import-form" class="grid-form import-form">
+            <label>
+              Feed format
+              <select name="format">
+                <option value="auto">Auto detect</option>
+                <option value="csv">CSV</option>
+                <option value="json">JSON</option>
+              </select>
+            </label>
+            <label class="checkbox-row">
+              <input name="replace" type="checkbox" />
+              Replace current products
+            </label>
+            <label class="wide">
+              Product feed
+              <textarea
+                name="content"
+                placeholder="sku,title,brand,category,price,currency,availability,product_url,image_url,description&#10;SKU-1,Lenovo ThinkPad T14,Lenovo,Laptops,1299,BGN,in_stock,https://example.com/p/sku-1,https://example.com/p/sku-1.jpg,Business laptop"
+                required
+              ></textarea>
+            </label>
+            <button class="wide" type="submit">Import products</button>
+          </form>
+          <div id="product-list" class="record-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
             <h2>Missing answers</h2>
             <span id="missing-answer-count" class="pill">0 open</span>
           </div>

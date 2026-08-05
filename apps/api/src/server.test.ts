@@ -16,6 +16,8 @@ import type {
   Organization,
   OrganizationUserCreateResponse,
   PrivacyEraseResponse,
+  ProductImportResponse,
+  PublicChatResponse,
   RetentionRunResponse,
   Site,
   SiteDataExport,
@@ -35,6 +37,7 @@ import {
   isPrivateAddress,
   normalizeKnowledgeImportUrl,
 } from './knowledge-import.js';
+import { parseProductFeed } from './product-import.js';
 
 interface TestApi {
   url: string;
@@ -343,6 +346,135 @@ test('admin can import PDF knowledge document drafts', async () => {
   } finally {
     await api.close();
   }
+});
+
+test('admin can import product feed and public chat returns product cards', async () => {
+  const api = await createTestApi({
+    site: (site) => {
+      site.config.mode = 'commerce_readonly';
+    },
+  });
+  try {
+    const importResponse = await fetch(`${api.url}/admin/sites/site_test/products/import`, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer test-token',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        format: 'csv',
+        replace: true,
+        content: [
+          'sku,title,brand,category,price,currency,availability,product_url,image_url,description,keywords',
+          'T14-BG,Lenovo ThinkPad T14,Lenovo,Laptops,1299,BGN,in_stock,https://example.com/products/t14,https://example.com/t14.jpg,Business laptop,"thinkpad, laptop, лаптоп"',
+          'BROKEN,,,,,,,,,,',
+        ].join('\n'),
+      }),
+    });
+    assert.equal(importResponse.status, 200);
+    const imported = await json<ProductImportResponse>(importResponse);
+    assert.equal(imported.imported, 1);
+    assert.equal(imported.updated, 0);
+    assert.equal(imported.skippedRows, 1);
+    assert.equal(imported.products[0]?.sku, 'T14-BG');
+
+    const productsResponse = await fetch(`${api.url}/admin/sites/site_test/products`, {
+      headers: { Authorization: 'Bearer test-token' },
+    });
+    assert.equal(productsResponse.status, 200);
+    const products = await json<ProductImportResponse['products']>(productsResponse);
+    assert.equal(products.length, 1);
+
+    const chatResponse = await fetch(`${api.url}/public/sites/site_test/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: 'Do you have a Lenovo laptop?',
+        locale: 'en',
+      }),
+    });
+    assert.equal(chatResponse.status, 200);
+    const chat = await json<PublicChatResponse & { leadId?: string | null }>(chatResponse);
+    assert.equal(chat.intent, 'product_recommendation');
+    assert.equal(chat.productCards?.length, 1);
+    assert.equal(chat.productCards?.[0]?.sku, 'T14-BG');
+    assert.equal(chat.productCards?.[0]?.priceLabel, '1,299 BGN');
+    assert.equal(chat.needsLeadDetails, false);
+
+    const clickResponse = await fetch(`${api.url}/public/sites/site_test/actions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        conversationId: chat.conversationId,
+        action: 'product_clicked',
+        status: 'completed',
+        confidence: 'customer_click',
+        locale: 'en',
+        metadata: {
+          productId: chat.productCards?.[0]?.id,
+          sku: chat.productCards?.[0]?.sku,
+        },
+      }),
+    });
+    assert.equal(clickResponse.status, 200);
+
+    const data = await api.store.read();
+    assert.equal(data.productItems.length, 1);
+    assert.ok(data.actionLogs.some((action) => action.action === 'product_feed_import'));
+    assert.ok(data.actionLogs.some((action) => action.action === 'product_recommendation'));
+    assert.ok(data.actionLogs.some((action) => action.action === 'product_clicked' && action.metadata['sku'] === 'T14-BG'));
+  } finally {
+    await api.close();
+  }
+});
+
+test('product JSON feed preserves structured attributes', () => {
+  const parsed = parseProductFeed({
+    siteId: 'site_test',
+    format: 'json',
+    content: [
+      {
+        sku: 'PHONE-1',
+        title: 'Demo Phone',
+        brand: 'Demo',
+        category: 'Phones',
+        salePrice: 799,
+        availability: 'available',
+        productUrl: 'https://example.com/products/phone-1',
+        imageUrl: 'https://example.com/products/phone-1.jpg',
+        attributes: {
+          memory: '8GB',
+          storage: '256GB',
+        },
+      },
+    ],
+  });
+
+  assert.equal(parsed.products.length, 1);
+  assert.equal(parsed.products[0]?.price, 799);
+  assert.equal(parsed.products[0]?.productUrl, 'https://example.com/products/phone-1');
+  assert.equal(parsed.products[0]?.imageUrl, 'https://example.com/products/phone-1.jpg');
+  assert.equal(parsed.products[0]?.attributes['memory'], '8GB');
+  assert.equal(parsed.products[0]?.availability, 'in_stock');
+});
+
+test('product feed parses common price formats', () => {
+  const parsed = parseProductFeed({
+    siteId: 'site_test',
+    format: 'csv',
+    content: [
+      'sku,title,price,currency',
+      'BG-PRICE,Bulgarian formatted price,"1 299,99",BGN',
+      'US-PRICE,US formatted price,"1,299.99",USD',
+      'EU-PRICE,EU formatted price,"1.299,99",EUR',
+      'WHOLE-PRICE,Whole thousands price,"1,299",USD',
+    ].join('\n'),
+  });
+
+  assert.equal(parsed.products[0]?.price, 1299.99);
+  assert.equal(parsed.products[1]?.price, 1299.99);
+  assert.equal(parsed.products[2]?.price, 1299.99);
+  assert.equal(parsed.products[3]?.price, 1299);
 });
 
 test('admin can update lead status and export leads as CSV', async () => {

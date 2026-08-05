@@ -28,6 +28,7 @@ export type PublicChatIntent =
   | 'knowledge_answer'
   | 'lead_capture'
   | 'human_handoff'
+  | 'product_recommendation'
   | 'pricing'
   | 'fallback'
   | 'ai_answer';
@@ -137,6 +138,7 @@ export interface AdminMeResponse {
 export interface SiteDataExport {
   site: Site;
   exportedAt: string;
+  products: ProductItem[];
   conversations: Conversation[];
   messages: ChatMessage[];
   leads: Lead[];
@@ -320,6 +322,51 @@ export interface KnowledgeDocumentImportResponse {
   warnings: string[];
 }
 
+export type ProductAvailability = 'in_stock' | 'out_of_stock' | 'preorder' | 'unknown';
+
+export interface ProductItem {
+  id: string;
+  siteId: string;
+  enabled: boolean;
+  sku: string | null;
+  title: string;
+  brand: string | null;
+  category: string | null;
+  description: string | null;
+  price: number | null;
+  currency: string | null;
+  availability: ProductAvailability;
+  imageUrl: string | null;
+  productUrl: string | null;
+  attributes: Record<string, string>;
+  keywords: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProductImportResponse {
+  imported: number;
+  updated: number;
+  skippedRows: number;
+  products: ProductItem[];
+}
+
+export interface ProductCard {
+  id: string;
+  title: string;
+  sku: string | null;
+  brand: string | null;
+  category: string | null;
+  description: string | null;
+  price: number | null;
+  currency: string | null;
+  priceLabel: string | null;
+  availability: ProductAvailability;
+  imageUrl: string | null;
+  productUrl: string | null;
+  reason: string;
+}
+
 export interface ChatMessage {
   id: string;
   conversationId: string;
@@ -456,6 +503,7 @@ export interface PublicChatResponse {
   needsLeadDetails: boolean;
   needsHuman: boolean;
   actionId: string | null;
+  productCards?: ProductCard[];
 }
 
 export interface PublicLeadRequest {
