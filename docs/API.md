@@ -44,7 +44,9 @@ POST /public/sites/:siteId/leads
 
 Requires either `email` or `phone`.
 
-If the site has `config.integrations.leadWebhookUrl`, the API posts a `lead.created` webhook after the lead is persisted. If `EMAIL_PROVIDER=resend` is configured and the site has `config.contact.email`, the API also sends a lead email notification. Delivery failures do not fail the visitor request; they are recorded in the action audit.
+If the site has `config.integrations.leadWebhookUrl`, the API posts a `lead.created` webhook after the lead is persisted. If `EMAIL_PROVIDER=smtp` or `EMAIL_PROVIDER=resend` is configured and the site has `config.contact.email`, the API also sends a lead email notification. Delivery failures do not fail the visitor request; they are recorded in the action audit.
+
+When `JILANOV_CONTACT_SYNC_URL` is configured, the API also posts email-bearing leads to the shared Jilanov contact-message endpoint so they appear in the main Jilanov admin panel messages list. The sync uses the existing Jilanov message shape (`name`, `email`, `phone`, `message`) and writes chatbot source details into the message body. Phone-only leads stay in the chatbot lead inbox and are audited as skipped because the shared Jilanov message endpoint requires an email.
 
 ### Send Feedback
 

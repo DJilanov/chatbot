@@ -56,6 +56,7 @@ async function createTestApi(configure?: {
   organization?: (org: Organization) => void;
   emailProvider?: EmailProvider;
   adminBaseUrl?: string;
+  jilanovContactSyncUrl?: string | null;
 }): Promise<TestApi> {
   const dir = await mkdtemp(join(tmpdir(), 'chatbot-api-'));
   const store = new FileStore(join(dir, 'data.json'));
@@ -94,6 +95,7 @@ async function createTestApi(configure?: {
     publicBaseUrl: 'http://127.0.0.1',
     adminBaseUrl: configure?.adminBaseUrl ?? 'http://admin.test',
     integrationTimeoutMs: 1000,
+    jilanovContactSyncUrl: configure?.jilanovContactSyncUrl ?? null,
     aiProvider: createAiProvider({ provider: 'null' }),
     emailProvider: configure?.emailProvider ?? new NullEmailProvider(),
   };
@@ -827,6 +829,76 @@ test('lead webhooks are delivered and audited', async () => {
     const delivery = data.actionLogs.find((item) => item.action === 'lead_webhook_delivery');
     assert.equal(delivery?.status, 'completed');
     assert.equal(delivery?.metadata['responseStatus'], 204);
+  } finally {
+    await api.close();
+    await receiver.close();
+  }
+});
+
+test('lead sync creates a Jilanov admin message payload and audit entry', async () => {
+  const receiver = await createWebhookReceiver();
+  const api = await createTestApi({
+    jilanovContactSyncUrl: receiver.url,
+  });
+  try {
+    const response = await fetch(`${api.url}/public/sites/site_test/leads`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Demo Lead',
+        company: 'Demo Ltd',
+        email: 'DemoLead@Example.com',
+        message: 'Demo request from landing page\nWebsite: https://demo.example.com',
+        pageUrl: 'https://chatbot.jilanov.com/#demo',
+        locale: 'bg',
+        consent: true,
+      }),
+    });
+    assert.equal(response.status, 201);
+    assert.equal(receiver.requests.length, 1);
+
+    const payload = receiver.requests[0];
+    assert.equal(payload?.['name'], 'Demo Lead');
+    assert.equal(payload?.['email'], 'demolead@example.com');
+    assert.equal(payload?.['phone'], 'not provided');
+    assert.match(String(payload?.['message']), /Chatbot demo\/booking lead/);
+    assert.match(String(payload?.['message']), /Company: Demo Ltd/);
+    assert.match(String(payload?.['message']), /Page: https:\/\/chatbot\.jilanov\.com\/#demo/);
+
+    const data = await api.store.read();
+    const delivery = data.actionLogs.find((item) => item.action === 'jilanov_contact_sync');
+    assert.equal(delivery?.status, 'completed');
+    assert.equal(delivery?.metadata['target'], 'jilanov-admin-messages');
+    assert.equal(delivery?.metadata['leadType'], 'demo_request');
+    assert.equal(delivery?.metadata['responseStatus'], 204);
+  } finally {
+    await api.close();
+    await receiver.close();
+  }
+});
+
+test('lead sync is skipped and audited when the Jilanov admin message cannot be created', async () => {
+  const receiver = await createWebhookReceiver();
+  const api = await createTestApi({
+    jilanovContactSyncUrl: receiver.url,
+  });
+  try {
+    const response = await fetch(`${api.url}/public/sites/site_test/leads`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        phone: '+359888111222',
+        message: 'Please call me about a demo',
+        consent: true,
+      }),
+    });
+    assert.equal(response.status, 201);
+    assert.equal(receiver.requests.length, 0);
+
+    const data = await api.store.read();
+    const delivery = data.actionLogs.find((item) => item.action === 'jilanov_contact_sync');
+    assert.equal(delivery?.status, 'blocked');
+    assert.equal(delivery?.metadata['reasonCode'], 'missing_or_invalid_email');
   } finally {
     await api.close();
     await receiver.close();

@@ -1087,6 +1087,7 @@ Implemented in the repo:
 - Product comparison responses for imported products, with product cards, comparison rows, and a widget compare button for multi-product results.
 - Safe checkout/cart handoff boundaries that route purchase intent to product pages, label the CTA separately, and audit handoff clicks without claiming cart or order changes.
 - Duplicate lead detection for repeated email/phone submissions, with `duplicateOfLeadId`, admin visibility, CSV export coverage, and `lead_duplicate_detected` audit events.
+- Internal Jilanov admin sync for email-bearing chatbot demo/booking leads, using the existing Jilanov contact-message endpoint and `jilanov_contact_sync` audit entries.
 - Commercial operating docs for sales pitch, pilot onboarding, integration expansion, and production demo/email smoke validation.
 - Repeatable production demo/email smoke script that submits a demo-style lead, verifies admin visibility and email-delivery audit, then marks the smoke lead as spam.
 - Booking URL configuration in admin, public widget config exposure, post-lead booking CTA in the widget, and booking-link click audit events.
@@ -1221,6 +1222,7 @@ Copy principles:
    - Use the Jilanov logo consistently.
    - Keep the Book a demo form routed through `/public/sites/site_demo/leads`.
    - Configure production email with SMTP or Resend so demo requests reach the owner inbox.
+   - Configure `JILANOV_CONTACT_SYNC_URL` in production so email-bearing demo requests appear in the main Jilanov admin panel messages list.
    - Keep lead/email delivery audit logs visible in admin.
 
 2. Create sales-proof assets:

@@ -8,6 +8,7 @@ export interface ApiConfig {
   publicBaseUrl: string;
   adminBaseUrl: string;
   integrationTimeoutMs: number;
+  jilanovContactSyncUrl: string | null;
   aiProvider: AiProvider;
   emailProvider: EmailProvider;
 }
@@ -22,6 +23,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     publicBaseUrl: env['PUBLIC_BASE_URL']?.trim() || `http://localhost:${port}`,
     adminBaseUrl: env['ADMIN_BASE_URL']?.trim() || 'http://localhost:4174',
     integrationTimeoutMs: parseInteger(env['INTEGRATION_TIMEOUT_MS'], 5000),
+    jilanovContactSyncUrl: parseOptionalHttpUrl(env['JILANOV_CONTACT_SYNC_URL']),
     aiProvider: createAiProvider({
       provider,
       apiKey: env['AI_PROVIDER_API_KEY']?.trim() || undefined,
@@ -57,6 +59,20 @@ function parseOptionalBoolean(value: string | undefined): boolean | undefined {
   if (value === 'true' || value === '1') return true;
   if (value === 'false' || value === '0') return false;
   return undefined;
+}
+
+function parseOptionalHttpUrl(value: string | undefined): string | null {
+  const text = value?.trim();
+  if (!text) return null;
+  try {
+    const url = new URL(text);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      throw new Error('Unsupported protocol');
+    }
+    return url.href;
+  } catch {
+    throw new Error('JILANOV_CONTACT_SYNC_URL must be a valid HTTP or HTTPS URL');
+  }
 }
 
 function parseAiProvider(value: string | undefined): AiProviderId {

@@ -96,6 +96,10 @@ EMAIL_FROM="Assistant <notify@example.com>"
 
 Delivery success or failure is recorded in the action audit. Visitor requests are not failed when an email provider is unavailable.
 
+## Jilanov Admin Sync
+
+Set `JILANOV_CONTACT_SYNC_URL` to the existing Jilanov contact-message endpoint when chatbot demo/booking leads should also appear in the main Jilanov admin panel messages list. The sync is server-side only, uses the legacy `name`/`email`/`phone`/`message` payload, and records `jilanov_contact_sync` audit entries without failing visitor submissions.
+
 ## Widget Install
 
 After building `packages/widget`, host `packages/widget/dist/widget.js` on your CDN or app domain:

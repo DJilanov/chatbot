@@ -99,6 +99,20 @@ interface EmailDeliveryInput {
   metadata?: Record<string, unknown>;
 }
 
+interface JilanovContactSyncInput {
+  siteId: string;
+  conversationId: string | null;
+  url: string;
+  locale: LocaleCode;
+  lead: Lead;
+  payload: {
+    name: string;
+    email: string;
+    phone: string;
+    message: string;
+  };
+}
+
 interface BootstrapAuth {
   kind: 'bootstrap';
 }
@@ -1217,6 +1231,7 @@ async function handlePublicChat(ctx: RouteContext, site: Site): Promise<void> {
 
   if (createdLead) await dispatchLeadWebhook(ctx, site, createdLead);
   if (createdLead) await dispatchLeadEmail(ctx, site, createdLead);
+  if (createdLead) await dispatchJilanovContactSync(ctx, site, createdLead);
   if (createdSupportTicket) await dispatchSupportWebhook(ctx, site, createdSupportTicket);
   if (createdSupportTicket) await dispatchSupportEmail(ctx, site, createdSupportTicket);
 
@@ -1316,6 +1331,7 @@ async function handlePublicLead(ctx: RouteContext, site: Site): Promise<void> {
 
   await dispatchLeadWebhook(ctx, site, lead);
   await dispatchLeadEmail(ctx, site, lead);
+  await dispatchJilanovContactSync(ctx, site, lead);
 
   const response: PublicLeadResponse = { leadId: lead.id, status: lead.status };
   sendJson(ctx.res, 201, response);
@@ -1424,6 +1440,123 @@ async function dispatchLeadEmail(ctx: RouteContext, site: Site, lead: Lead): Pro
       leadId: lead.id,
       leadType: isDemoRequestLead(lead) ? 'demo_request' : 'lead',
     },
+  });
+}
+
+async function dispatchJilanovContactSync(ctx: RouteContext, site: Site, lead: Lead): Promise<void> {
+  const url = ctx.config.jilanovContactSyncUrl;
+  if (!url) return;
+
+  const email = normalizedJilanovEmail(lead.email);
+  if (!email) {
+    await auditJilanovContactSync(ctx, {
+      siteId: site.id,
+      conversationId: lead.conversationId,
+      locale: lead.locale,
+      status: 'blocked',
+      reason: 'Jilanov contact sync requires a valid email address',
+      metadata: {
+        leadId: lead.id,
+        leadType: isDemoRequestLead(lead) ? 'demo_request' : 'lead',
+        reasonCode: 'missing_or_invalid_email',
+      },
+    });
+    return;
+  }
+
+  await deliverJilanovContactSync(ctx, {
+    siteId: site.id,
+    conversationId: lead.conversationId,
+    url,
+    locale: lead.locale,
+    lead,
+    payload: {
+      name: jilanovContactName(lead),
+      email,
+      phone: jilanovContactPhone(lead),
+      message: jilanovContactMessage(site, lead),
+    },
+  });
+}
+
+async function deliverJilanovContactSync(ctx: RouteContext, input: JilanovContactSyncInput): Promise<void> {
+  const startedAt = Date.now();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ctx.config.integrationTimeoutMs);
+  let status: ActionStatus = 'completed';
+  let reason: string | null = null;
+  let responseStatus: number | null = null;
+  let externalMessageId: string | null = null;
+
+  try {
+    const response = await fetch(input.url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'chatbot-saas-jilanov-contact-sync/0.1',
+      },
+      body: JSON.stringify(input.payload),
+      signal: controller.signal,
+    });
+    responseStatus = response.status;
+    const responseBody = await response.json().catch(() => null);
+    if (isRecord(responseBody) && typeof responseBody['id'] === 'string') {
+      externalMessageId = responseBody['id'].slice(0, 120);
+    }
+    if (!response.ok) {
+      status = 'failed';
+      reason = `Jilanov contact API responded with HTTP ${response.status}`;
+    }
+  } catch (error) {
+    status = 'failed';
+    reason = error instanceof Error ? error.message.slice(0, 500) : 'Jilanov contact API request failed';
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  await auditJilanovContactSync(ctx, {
+    siteId: input.siteId,
+    conversationId: input.conversationId,
+    locale: input.locale,
+    status,
+    reason,
+    metadata: {
+      host: new URL(input.url).host,
+      responseStatus,
+      externalMessageId,
+      durationMs: Date.now() - startedAt,
+      leadId: input.lead.id,
+      leadType: isDemoRequestLead(input.lead) ? 'demo_request' : 'lead',
+      target: 'jilanov-admin-messages',
+    },
+  });
+}
+
+async function auditJilanovContactSync(ctx: RouteContext, input: {
+  siteId: string;
+  conversationId: string | null;
+  locale: LocaleCode;
+  status: ActionStatus;
+  reason: string | null;
+  metadata: Record<string, unknown>;
+}): Promise<void> {
+  await ctx.store.update((data) => {
+    findSite(data, input.siteId);
+    data.actionLogs.push(
+      newActionLog({
+        siteId: input.siteId,
+        conversationId: input.conversationId,
+        action: 'jilanov_contact_sync',
+        status: input.status,
+        confidence: 'system',
+        locale: input.locale,
+        sourceText: null,
+        reply: null,
+        reason: input.reason,
+        metadata: input.metadata,
+      }),
+    );
+    data.usageEvents.push(newUsageEvent(input.siteId, 'action', 1));
   });
 }
 
@@ -1635,6 +1768,46 @@ function leadEmailSubject(site: Site, lead: Lead): string {
 
 function isDemoRequestLead(lead: Lead): boolean {
   return lead.message.startsWith('Demo request from landing page') || lead.message.startsWith('Заявка за демо');
+}
+
+function normalizedJilanovEmail(value: string | null): string | null {
+  const email = value?.trim().toLowerCase();
+  if (!email || email.length > 255) return null;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
+}
+
+function jilanovContactName(lead: Lead): string {
+  return truncatePlainField(lead.name ?? lead.company ?? lead.email ?? lead.phone ?? 'Chatbot lead', 256);
+}
+
+function jilanovContactPhone(lead: Lead): string {
+  return truncatePlainField(lead.phone ?? 'not provided', 256);
+}
+
+function jilanovContactMessage(site: Site, lead: Lead): string {
+  const title = isDemoRequestLead(lead) ? 'Chatbot demo/booking lead' : 'Chatbot lead';
+  return truncateEmailText(
+    [
+      title,
+      '',
+      lead.message,
+      '',
+      '--- Chatbot source ---',
+      `Site: ${site.name} (${site.id})`,
+      `Lead ID: ${lead.id}`,
+      `Conversation ID: ${lead.conversationId ?? 'n/a'}`,
+      `Company: ${lead.company ?? 'n/a'}`,
+      `Page: ${lead.pageUrl ?? 'n/a'}`,
+      `Locale: ${lead.locale}`,
+      `Consent captured: ${lead.consentAt ? 'yes' : 'no'}`,
+      `Created: ${lead.createdAt}`,
+    ].join('\n'),
+  );
+}
+
+function truncatePlainField(value: string, maxLength: number): string {
+  const text = value.trim().replace(/\s+/g, ' ');
+  return (text || 'not provided').slice(0, maxLength);
 }
 
 function userInviteEmailText(ctx: RouteContext, site: Site, user: OrganizationUser, token: string): string {
