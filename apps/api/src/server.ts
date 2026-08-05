@@ -1730,6 +1730,7 @@ function publicSiteConfig(site: Site, locale: LocaleCode): PublicSiteConfigRespo
     supportedLocales: config.supportedLocales,
     branding: config.branding,
     privacy: config.privacy,
+    bookingUrl: safeUrlHref(config.contact.bookingUrl),
     welcomeMessage: config.welcomeMessage,
     leadCapturePrompt: config.leadCapturePrompt,
   };

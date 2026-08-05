@@ -1089,6 +1089,7 @@ Implemented in the repo:
 - Duplicate lead detection for repeated email/phone submissions, with `duplicateOfLeadId`, admin visibility, CSV export coverage, and `lead_duplicate_detected` audit events.
 - Commercial operating docs for sales pitch, pilot onboarding, integration expansion, and production demo/email smoke validation.
 - Repeatable production demo/email smoke script that submits a demo-style lead, verifies admin visibility and email-delivery audit, then marks the smoke lead as spam.
+- Booking URL configuration in admin, public widget config exposure, post-lead booking CTA in the widget, and booking-link click audit events.
 
 Still required before a serious paid launch:
 
@@ -1157,7 +1158,7 @@ Must build next:
 - Missing-answer analytics and weekly summaries generated from failed or low-confidence conversations.
 - Native product feed API connectors for WooCommerce, OpenCart, Shopify, CloudCart, and Jilanov ecommerce.
 - Safe ecommerce actions beyond handoff: platform cart API adapters, order-status routing, return/warranty/invoice routing, and staff fallback when system data is missing.
-- CRM and sales operations: HubSpot, Pipedrive, Zoho, webhook retries, calendar/demo booking, CRM lead summaries, and two-way status sync after pilot demand.
+- CRM and sales operations: HubSpot, Pipedrive, Zoho, webhook retries, calendar API booking, CRM lead summaries, and two-way status sync after pilot demand.
 - Channel expansion after website proof: Viber, Messenger, WhatsApp, Instagram, email, and Slack/Teams notifications.
 - Admin support queue with ticket status, transcript, reason, source URL, language, internal notes, assignment, and SLA.
 - Analytics focused on business value: leads, qualified leads, unanswered questions, handoffs, product clicks, checkout handoffs, negative feedback, language split, top pages, and estimated saved support time.
@@ -1236,7 +1237,8 @@ Copy principles:
    - Missing-answer queue. Completed in the current admin/API slice.
    - Product feed ingestion, product cards, product comparison, and checkout/cart handoff boundaries. Completed for pasted CSV/JSON and public feed URLs with read-only product recommendations, comparison tables, and safe product-page routing.
    - Duplicate lead detection. Completed for repeated email/phone submissions with admin, CSV, and audit visibility.
-   - CRM/calendar integration.
+   - Booking link routing. Completed for configured booking URLs after lead capture; native calendar API scheduling remains an integration step.
+   - CRM/native calendar integration.
    - Viber/Messenger roadmap.
 
 4. Run pilots:

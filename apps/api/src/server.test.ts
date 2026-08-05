@@ -113,7 +113,11 @@ async function createTestApi(configure?: {
 }
 
 test('public site config localizes browser-facing copy', async () => {
-  const api = await createTestApi();
+  const api = await createTestApi({
+    site: (site) => {
+      site.config.contact.bookingUrl = 'https://cal.example.com/jilanov-demo';
+    },
+  });
   try {
     const bgResponse = await fetch(`${api.url}/public/sites/site_test/config?locale=bg`);
     assert.equal(bgResponse.status, 200);
@@ -121,6 +125,7 @@ test('public site config localizes browser-facing copy', async () => {
     const bgBranding = bgConfig['branding'] as Record<string, unknown>;
     assert.equal(bgBranding['assistantName'], 'Асистент');
     assert.match(String(bgConfig['welcomeMessage']), /Здравейте/);
+    assert.equal(bgConfig['bookingUrl'], 'https://cal.example.com/jilanov-demo');
 
     const enResponse = await fetch(`${api.url}/public/sites/site_test/config?locale=en`);
     assert.equal(enResponse.status, 200);

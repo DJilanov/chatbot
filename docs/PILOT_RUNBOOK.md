@@ -23,12 +23,13 @@ Goal: run 3 Bulgarian pilots that produce real proof, pricing confidence, and in
 ## Setup Checklist
 
 - Create organization and site in admin.
-- Configure default language, supported languages, widget brand, colors, privacy URL, retention days, contact email, and domain allowlist.
+- Configure default language, supported languages, widget brand, colors, privacy URL, retention days, contact email, optional booking URL, and domain allowlist.
 - Import approved knowledge from website pages, pasted FAQ/policy text, CSV, PDF, or DOCX.
 - Review imported drafts before publishing.
 - Import product feed for commerce pilots.
 - Send a test chat and verify the answer source.
 - Submit a test lead and verify owner email delivery.
+- If a booking URL is configured, verify the widget shows a booking CTA after contact capture and logs `booking_link_clicked`.
 - Install the widget script on the customer website.
 - Confirm mobile and desktop rendering.
 - Capture launch screenshots.

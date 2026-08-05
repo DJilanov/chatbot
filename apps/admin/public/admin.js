@@ -53,6 +53,7 @@ const adminTranslations = {
     'Primary color': 'Основен цвят',
     'Contact email': 'Имейл за контакт',
     'Contact phone': 'Телефон за контакт',
+    'Booking URL': 'URL за запазване на среща',
     'Lead webhook URL': 'Webhook адрес за запитвания',
     'Support webhook URL': 'Webhook адрес за поддръжка',
     'Welcome message': 'Приветствено съобщение',
@@ -226,6 +227,7 @@ const adminTranslations = {
     negative_feedback: 'негативна оценка',
     failed_action: 'неуспешно действие',
     lead_duplicate_detected: 'засечено дублирано запитване',
+    booking_link_clicked: 'клик към запазване на среща',
     product_feed_import: 'импорт на продукти',
     product_feed_url_import: 'импорт на продукти от URL',
     product_recommendation: 'препоръка на продукт',
@@ -507,6 +509,7 @@ function fillConfig(site) {
   form.elements.primaryColor.value = site.config.branding.primaryColor || '';
   form.elements.email.value = site.config.contact.email || '';
   form.elements.phone.value = site.config.contact.phone || '';
+  form.elements.bookingUrl.value = site.config.contact.bookingUrl || '';
   form.elements.leadWebhookUrl.value = site.config.integrations?.leadWebhookUrl || '';
   form.elements.supportWebhookUrl.value = site.config.integrations?.supportWebhookUrl || '';
   form.elements.welcomeMessage.value = site.config.welcomeMessage || '';
@@ -836,6 +839,7 @@ async function saveConfig(event) {
       contact: {
         email: values.email || null,
         phone: values.phone || null,
+        bookingUrl: values.bookingUrl || null,
       },
       integrations: {
         leadWebhookUrl: values.leadWebhookUrl || null,

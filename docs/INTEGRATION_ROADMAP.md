@@ -70,9 +70,10 @@ Build sequence:
 1. Duplicate lead detection. Implemented in API/admin/export through `duplicateOfLeadId` and `lead_duplicate_detected`.
 2. Webhook retry and dead-letter visibility.
 3. CRM contact/deal creation with idempotency key.
-4. Calendar booking link routing through site config.
-5. Lead summary in email and CRM note.
-6. Two-way status sync only after pilot demand.
+4. Booking link routing through site config. Implemented for post-lead widget CTA and click audit.
+5. Native calendar API scheduling when a pilot needs real time-slot creation.
+6. Lead summary in email and CRM note.
+7. Two-way status sync only after pilot demand.
 
 Required data mapping:
 

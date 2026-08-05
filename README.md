@@ -111,6 +111,6 @@ After building `packages/widget`, host `packages/widget/dist/widget.js` on your 
 
 ## Implementation Status
 
-This is an MVP foundation. It implements the Lead Assistant path first: site config, scoped admin users and roles, knowledge answers, conversations, lead capture, duplicate lead detection, lead status workflow, CSV lead export, handoff tickets, webhook and email delivery hooks, plan limits, billing summaries, privacy export/erasure/retention controls, analytics, action audit, assistant evals, and embeddable widget.
+This is an MVP foundation. It implements the Lead Assistant path first: site config, scoped admin users and roles, knowledge answers, conversations, lead capture, duplicate lead detection, booking-link routing, lead status workflow, CSV lead export, handoff tickets, webhook and email delivery hooks, plan limits, billing summaries, privacy export/erasure/retention controls, analytics, action audit, assistant evals, and embeddable widget.
 
 Commerce adapters, payment-provider billing, password/session auth, automated retention scheduling, richer notification templates, and advanced CRM/helpdesk integrations remain roadmap items in `Plan.md`.

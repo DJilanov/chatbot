@@ -510,6 +510,7 @@ export interface PublicSiteConfigResponse {
   supportedLocales: LocaleCode[];
   branding: SiteBranding;
   privacy: SitePrivacy;
+  bookingUrl: string | null;
   welcomeMessage: string;
   leadCapturePrompt: string;
 }

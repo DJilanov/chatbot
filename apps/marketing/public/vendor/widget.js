@@ -146,7 +146,7 @@ const persisted = {
         if (messages) {
             appendMessage(messages, 'assistant', currentConfig.welcomeMessage, false);
             for (const item of persisted.messages) {
-                appendMessage(messages, item.role, item.text, true, item.productCards, item.productComparison);
+                appendMessage(messages, item.role, item.text, true, item.productCards, item.productComparison, item.bookingUrl);
             }
             if (loading)
                 appendMessage(messages, 'assistant', copy.typing, true);
@@ -286,9 +286,11 @@ const persisted = {
             if (!response.ok)
                 throw new Error(`lead_failed_${response.status}`);
             leadVisible = false;
+            const bookingUrl = safeExternalUrl(config.bookingUrl);
             persisted.messages.push({
                 role: 'assistant',
                 text: widgetCopy(currentLocale).contactSent,
+                ...(bookingUrl ? { bookingUrl } : {}),
             });
             emit('lead_created', { conversationId });
             writeState(storageKey, { conversationId, visitorId, messages: persisted.messages });
@@ -305,7 +307,7 @@ const persisted = {
             render();
         }
     }
-    function appendMessage(container, role, text, withFeedback, productCards = [], productComparison = null) {
+    function appendMessage(container, role, text, withFeedback, productCards = [], productComparison = null, bookingUrl) {
         const row = document.createElement('div');
         row.className = `chatbot-message-row ${role}`;
         const stack = document.createElement('div');
@@ -321,6 +323,20 @@ const persisted = {
         }
         if (role === 'assistant' && safeProductComparison) {
             stack.append(renderProductComparison(safeProductComparison));
+        }
+        const safeBookingUrl = safeExternalUrl(bookingUrl);
+        if (role === 'assistant' && safeBookingUrl) {
+            const copy = widgetCopy(currentLocale);
+            const link = document.createElement('a');
+            link.className = 'chatbot-booking-link';
+            link.href = safeBookingUrl;
+            link.target = '_blank';
+            link.rel = 'noopener';
+            link.textContent = copy.bookMeeting;
+            link.addEventListener('click', () => {
+                void sendBookingClick(safeBookingUrl);
+            });
+            stack.append(link);
         }
         if (role === 'assistant' && withFeedback) {
             const copy = widgetCopy(currentLocale);
@@ -452,6 +468,24 @@ const persisted = {
             }),
         }).catch(() => undefined);
     }
+    async function sendBookingClick(bookingUrl) {
+        if (!config)
+            return;
+        emit('booking_link_clicked', { bookingUrl });
+        await fetch(`${apiUrl}/public/sites/${encodeURIComponent(siteId)}/actions`, {
+            method: 'POST',
+            keepalive: true,
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({
+                conversationId,
+                action: 'booking_link_clicked',
+                status: 'completed',
+                confidence: 'customer_click',
+                locale: activeLocale(config),
+                metadata: { bookingUrl },
+            }),
+        }).catch(() => undefined);
+    }
     function emit(eventName, payload) {
         for (const handler of handlers.get(eventName) ?? [])
             handler(payload);
@@ -504,11 +538,13 @@ function normalizePersistedMessage(value) {
         return null;
     const productCards = normalizeProductCards(record.productCards);
     const productComparison = normalizeProductComparison(record.productComparison);
+    const bookingUrl = safeExternalUrl(record.bookingUrl);
     return {
         role: record.role,
         text: record.text,
         productCards: productCards.length > 0 ? productCards : undefined,
         ...(productComparison ? { productComparison } : {}),
+        ...(bookingUrl ? { bookingUrl } : {}),
     };
 }
 function normalizeProductCards(value) {
@@ -610,6 +646,17 @@ function normalizeComparisonRows(value, productIds) {
 function textOrNull(value) {
     return typeof value === 'string' && value.trim() ? value.trim().slice(0, 1000) : null;
 }
+function safeExternalUrl(value) {
+    if (typeof value !== 'string' || !value.trim())
+        return null;
+    try {
+        const url = new URL(value.trim());
+        return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : null;
+    }
+    catch {
+        return null;
+    }
+}
 function productCardMeta(card, copy) {
     return [
         card.brand,
@@ -666,6 +713,7 @@ const widgetCopyBg = {
     aiNote: 'AI асистент. Не споделяйте пароли, данни за плащане или друга чувствителна информация.',
     askQuestion: 'Задайте въпрос',
     assistantUnavailable: 'Асистентът временно не е достъпен. Моля, опитайте отново по-късно.',
+    bookMeeting: 'Запази среща',
     chat: 'Чат',
     closeChat: 'Затвори чата',
     company: 'Фирма',
@@ -695,6 +743,7 @@ const widgetCopyEn = {
     aiNote: 'AI assistant. Do not share sensitive payment or password data.',
     askQuestion: 'Ask a question',
     assistantUnavailable: 'The assistant is unavailable right now. Please try again later.',
+    bookMeeting: 'Book meeting',
     chat: 'Chat',
     closeChat: 'Close chat',
     company: 'Company',
@@ -755,6 +804,7 @@ function css(branding) {
     .chatbot-message-row.user .chatbot-message { color: #fff; background: ${branding.primaryColor}; }
     .chatbot-feedback { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
     .chatbot-feedback button { border: 1px solid #cfd6e2; border-radius: 6px; background: #fff; color: #334155; padding: 4px 7px; font-size: 11px; cursor: pointer; }
+    .chatbot-booking-link { justify-self: start; border-radius: 6px; background: ${branding.primaryColor}; color: #fff; padding: 7px 10px; font-size: 12px; font-weight: 800; line-height: 14px; text-decoration: none; }
     .chatbot-product-cards { display: grid; gap: 8px; }
     .chatbot-product-card { display: grid; grid-template-columns: 68px 1fr; gap: 10px; overflow: hidden; border: 1px solid #dbe3ef; border-radius: 8px; background: #fff; }
     .chatbot-product-card.no-image { grid-template-columns: 1fr; }
