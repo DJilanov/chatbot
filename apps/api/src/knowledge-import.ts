@@ -1,10 +1,18 @@
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
-import type { KnowledgeImportDraft, KnowledgeIntent, LocaleCode, LocalizedText } from '@chatbot/contracts';
+import type {
+  KnowledgeCsvImportResponse,
+  KnowledgeImportDraft,
+  KnowledgeIntent,
+  LocaleCode,
+  LocalizedText,
+} from '@chatbot/contracts';
 
 const MAX_IMPORT_BYTES = 512 * 1024;
+const MAX_CSV_IMPORT_BYTES = 96 * 1024;
 const MAX_IMPORTED_ANSWER_CHARS = 2000;
 const MAX_REDIRECTS = 3;
+const MAX_CSV_DRAFTS = 100;
 
 export class KnowledgeImportFailure extends Error {
   constructor(
@@ -26,6 +34,48 @@ export async function importKnowledgeFromUrl(input: {
   const url = normalizeKnowledgeImportUrl(input.url);
   const raw = await fetchPublicText(url, input.timeoutMs);
   return createKnowledgeImportDraft(url, raw, input.locale, input.intent, input.title);
+}
+
+export function importKnowledgeFromCsv(input: {
+  csv: unknown;
+  locale: LocaleCode;
+  intent: KnowledgeIntent;
+}): KnowledgeCsvImportResponse {
+  if (typeof input.csv !== 'string' || !input.csv.trim()) {
+    throw new KnowledgeImportFailure(400, 'csv_required', 'CSV content is required');
+  }
+  if (Buffer.byteLength(input.csv, 'utf8') > MAX_CSV_IMPORT_BYTES) {
+    throw new KnowledgeImportFailure(413, 'csv_too_large', 'CSV content is too large');
+  }
+
+  const rows = parseCsv(input.csv).filter((row) => row.some((cell) => cell.trim()));
+  if (rows.length < 2) {
+    throw new KnowledgeImportFailure(400, 'csv_header_required', 'CSV must include a header row and at least one data row');
+  }
+
+  const headers = rows[0]?.map(normalizeHeader) ?? [];
+  const columns = csvColumns(headers);
+  const drafts: KnowledgeImportDraft[] = [];
+  let skippedRows = 0;
+
+  for (const [index, row] of rows.slice(1).entries()) {
+    if (drafts.length >= MAX_CSV_DRAFTS) {
+      skippedRows += 1;
+      continue;
+    }
+    const draft = csvRowToDraft(row, columns, input.locale, input.intent, index + 2);
+    if (!draft) {
+      skippedRows += 1;
+      continue;
+    }
+    drafts.push(draft);
+  }
+
+  if (drafts.length === 0) {
+    throw new KnowledgeImportFailure(422, 'csv_no_drafts', 'CSV did not contain usable knowledge rows');
+  }
+
+  return { drafts, skippedRows };
 }
 
 export function normalizeKnowledgeImportUrl(value: unknown): URL {
@@ -262,6 +312,174 @@ function codePoint(value: number): string {
 
 function sanitizeSingleLine(value: string, maxLength: number): string {
   return value.replace(/\s+/g, ' ').trim().slice(0, maxLength) || 'Imported page';
+}
+
+function csvRowToDraft(
+  row: string[],
+  columns: CsvColumns,
+  fallbackLocale: LocaleCode,
+  fallbackIntent: KnowledgeIntent,
+  rowNumber: number,
+): KnowledgeImportDraft | null {
+  const answer: LocalizedText = {};
+  const answerBg = csvCellValue(row, columns.answerBg);
+  const answerEn = csvCellValue(row, columns.answerEn);
+  const genericAnswer = csvCellValue(row, columns.answer);
+  if (answerBg) answer.bg = answerBg.slice(0, MAX_IMPORTED_ANSWER_CHARS);
+  if (answerEn) answer.en = answerEn.slice(0, MAX_IMPORTED_ANSWER_CHARS);
+  if (genericAnswer && !answer[fallbackLocale]) answer[fallbackLocale] = genericAnswer.slice(0, MAX_IMPORTED_ANSWER_CHARS);
+
+  const answerText = answer.bg || answer.en || genericAnswer;
+  if (!answerText || answerText.length < 10) return null;
+
+  const rawTitle = csvCellValue(row, columns.title) || answerText;
+  const title = sanitizeSingleLine(rawTitle, 160);
+  const rowIntent = normalizeCsvKnowledgeIntent(csvCellValue(row, columns.intent)) ?? fallbackIntent;
+  const keywords = csvKeywords(csvCellValue(row, columns.keywords), `${title} ${answerText}`);
+
+  return {
+    sourceUrl: csvCellValue(row, columns.sourceUrl) || `csv:row-${rowNumber}`,
+    title,
+    locale: fallbackLocale,
+    intent: rowIntent,
+    keywords,
+    answer,
+    characterCount: answerText.length,
+  };
+}
+
+interface CsvColumns {
+  title: number | null;
+  intent: number | null;
+  keywords: number | null;
+  answer: number | null;
+  answerBg: number | null;
+  answerEn: number | null;
+  sourceUrl: number | null;
+}
+
+function csvColumns(headers: string[]): CsvColumns {
+  return {
+    title: findCsvColumn(headers, ['title', 'question', 'heading', 'zaglavie', 'vapros', 'заглавие', 'въпрос']),
+    intent: findCsvColumn(headers, ['intent', 'category', 'type', 'категория', 'тип']),
+    keywords: findCsvColumn(headers, ['keywords', 'keyword', 'tags', 'tagove', 'ключови_думи', 'ключови думи', 'етикети']),
+    answer: findCsvColumn(headers, ['answer', 'response', 'content', 'text', 'otgovor', 'отговор', 'съдържание']),
+    answerBg: findCsvColumn(headers, ['answer_bg', 'bg_answer', 'bulgarian_answer', 'bg', 'отговор_bg', 'отговор_бг']),
+    answerEn: findCsvColumn(headers, ['answer_en', 'en_answer', 'english_answer', 'en', 'отговор_en', 'отговор_ен']),
+    sourceUrl: findCsvColumn(headers, ['source_url', 'url', 'page_url', 'source', 'източник', 'адрес']),
+  };
+}
+
+function findCsvColumn(headers: string[], aliases: string[]): number | null {
+  const normalizedAliases = new Set(aliases.map(normalizeHeader));
+  const index = headers.findIndex((header) => normalizedAliases.has(header));
+  return index >= 0 ? index : null;
+}
+
+function csvCellValue(row: string[], index: number | null): string {
+  if (index === null) return '';
+  return String(row[index] ?? '').replace(/\s+/g, ' ').trim().slice(0, 4000);
+}
+
+function normalizeHeader(value: string): string {
+  return value
+    .replace(/^\uFEFF/, '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFKC')
+    .replace(/[^\p{L}\p{N}]+/gu, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+function csvKeywords(rawKeywords: string, fallbackText: string): string[] {
+  const explicit = rawKeywords
+    .split(/[;,|\n]/)
+    .map((keyword) => sanitizeSingleLine(keyword, 80).toLowerCase())
+    .filter(Boolean)
+    .slice(0, 30);
+  return explicit.length > 0 ? [...new Set(explicit)] : extractKeywords(fallbackText, 12);
+}
+
+function normalizeCsvKnowledgeIntent(value: string): KnowledgeIntent | null {
+  const normalized = normalizeHeader(value);
+  const aliases = new Map<string, KnowledgeIntent>([
+    ['company_info', 'company_info'],
+    ['company', 'company_info'],
+    ['services', 'services'],
+    ['service', 'services'],
+    ['pricing', 'pricing'],
+    ['price', 'pricing'],
+    ['delivery', 'delivery_policy'],
+    ['shipping', 'delivery_policy'],
+    ['delivery_policy', 'delivery_policy'],
+    ['returns', 'returns_policy'],
+    ['return_policy', 'returns_policy'],
+    ['returns_policy', 'returns_policy'],
+    ['warranty', 'warranty_policy'],
+    ['warranty_policy', 'warranty_policy'],
+    ['payment', 'payment_policy'],
+    ['payment_policy', 'payment_policy'],
+    ['invoice', 'invoice_policy'],
+    ['invoice_policy', 'invoice_policy'],
+    ['support', 'support'],
+    ['handoff', 'human_handoff'],
+    ['human_handoff', 'human_handoff'],
+    ['custom', 'custom'],
+    ['компания', 'company_info'],
+    ['услуги', 'services'],
+    ['цени', 'pricing'],
+    ['цена', 'pricing'],
+    ['доставка', 'delivery_policy'],
+    ['връщане', 'returns_policy'],
+    ['гаранция', 'warranty_policy'],
+    ['плащане', 'payment_policy'],
+    ['фактура', 'invoice_policy'],
+    ['поддръжка', 'support'],
+  ]);
+  return aliases.get(normalized) ?? null;
+}
+
+function parseCsv(content: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = '';
+  let inQuotes = false;
+
+  for (let index = 0; index < content.length; index += 1) {
+    const char = content[index];
+    if (inQuotes) {
+      if (char === '"' && content[index + 1] === '"') {
+        field += '"';
+        index += 1;
+      } else if (char === '"') {
+        inQuotes = false;
+      } else {
+        field += char;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inQuotes = true;
+    } else if (char === ',') {
+      row.push(field);
+      field = '';
+    } else if (char === '\n') {
+      row.push(field.replace(/\r$/, ''));
+      rows.push(row);
+      row = [];
+      field = '';
+    } else {
+      field += char;
+    }
+  }
+
+  if (inQuotes) throw new KnowledgeImportFailure(400, 'csv_invalid', 'CSV contains an unclosed quoted field');
+  if (field || row.length > 0) {
+    row.push(field.replace(/\r$/, ''));
+    rows.push(row);
+  }
+  return rows;
 }
 
 function extractKeywords(value: string, maxKeywords: number): string[] {

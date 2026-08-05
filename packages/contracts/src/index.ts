@@ -300,6 +300,11 @@ export interface KnowledgeImportDraft {
   characterCount: number;
 }
 
+export interface KnowledgeCsvImportResponse {
+  drafts: KnowledgeImportDraft[];
+  skippedRows: number;
+}
+
 export interface ChatMessage {
   id: string;
   conversationId: string;

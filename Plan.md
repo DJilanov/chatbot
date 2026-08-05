@@ -1078,6 +1078,7 @@ Implemented in the repo:
 - Regression tests for chat guardrails, file persistence, lead operations, support operations, lead webhook delivery, and email notification delivery.
 - Missing-answer queue in admin, derived from fallback chats, negative feedback, failed actions, and blocked actions, with review notes and knowledge-draft preparation.
 - Website page knowledge import that fetches public HTML/text pages, extracts a human-reviewed draft, and fills the admin knowledge form before publishing.
+- CSV knowledge import that converts spreadsheet rows into human-reviewed knowledge drafts without auto-publishing them.
 
 Still required before a serious paid launch:
 
@@ -1142,7 +1143,7 @@ Sources checked:
 Must build next:
 
 - Bulgarian-first admin UX, not only Bulgarian visitor widget copy.
-- Knowledge importer from PDFs, DOCX, CSV, pasted FAQ, and product policy pages.
+- Knowledge importer from PDFs, DOCX, pasted FAQ, and product policy pages.
 - Human approval workflow for imported/translated knowledge.
 - Missing-answer analytics and weekly summaries generated from failed or low-confidence conversations.
 - Product feed ingestion for CSV/JSON first, then WooCommerce, OpenCart, Shopify, CloudCart, and Jilanov ecommerce.
@@ -1221,7 +1222,8 @@ Copy principles:
 
 3. Build product advantages:
    - Website page knowledge import. Completed as a reviewed draft workflow.
-   - PDF/DOCX/CSV knowledge import.
+   - CSV knowledge import. Completed as a reviewed draft workflow.
+   - PDF/DOCX and pasted FAQ knowledge import.
    - Missing-answer queue. Completed in the current admin/API slice.
    - Product feed ingestion and product cards.
    - CRM/calendar integration.
@@ -1242,6 +1244,6 @@ Copy principles:
 
 1. Capture real product screenshots from the deployed widget, admin lead inbox, missing-answer queue, action audit, and owner email notification.
 2. Start 3 pilot installs: one ecommerce store, one service business, and one B2B website.
-3. Build PDF/DOCX/CSV knowledge import before adding heavier ecommerce integrations.
+3. Build PDF/DOCX and pasted FAQ knowledge import before adding heavier ecommerce integrations.
 4. Build CSV/JSON product feed ingestion and product cards, then prioritize WooCommerce, OpenCart, Shopify, CloudCart, and Jilanov ecommerce adapters based on pilot demand.
 5. Add CRM/calendar integrations and then Viber/Messenger channels after the website assistant has measurable pilot results.

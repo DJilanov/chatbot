@@ -147,6 +147,40 @@
             </label>
             <button type="submit">Import draft</button>
           </form>
+          <form id="knowledge-csv-import-form" class="grid-form import-form">
+            <label class="wide">
+              CSV knowledge rows
+              <textarea
+                name="csv"
+                placeholder="title,intent,keywords,answer_bg,answer_en&#10;Доставка,delivery_policy,&quot;доставка, куриер&quot;,Безплатна доставка над 100 лв.,Free delivery above 100 BGN"
+                required
+              ></textarea>
+            </label>
+            <label>
+              Default language
+              <select name="locale">
+                <option value="bg">Bulgarian</option>
+                <option value="en">English</option>
+              </select>
+            </label>
+            <label>
+              Default intent
+              <select name="intent">
+                <option value="custom">Custom</option>
+                <option value="company_info">Company info</option>
+                <option value="services">Services</option>
+                <option value="pricing">Pricing</option>
+                <option value="delivery_policy">Delivery policy</option>
+                <option value="returns_policy">Returns policy</option>
+                <option value="warranty_policy">Warranty policy</option>
+                <option value="payment_policy">Payment policy</option>
+                <option value="invoice_policy">Invoice policy</option>
+                <option value="support">Support</option>
+              </select>
+            </label>
+            <button type="submit">Import CSV drafts</button>
+          </form>
+          <div id="knowledge-import-draft-list" class="record-list import-draft-list"></div>
           <form id="knowledge-form" class="grid-form">
             <label>
               Title
@@ -161,7 +195,10 @@
                 <option value="delivery_policy">Delivery policy</option>
                 <option value="returns_policy">Returns policy</option>
                 <option value="warranty_policy">Warranty policy</option>
+                <option value="payment_policy">Payment policy</option>
+                <option value="invoice_policy">Invoice policy</option>
                 <option value="support">Support</option>
+                <option value="human_handoff">Human handoff</option>
                 <option value="custom">Custom</option>
               </select>
             </label>

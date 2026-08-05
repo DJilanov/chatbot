@@ -8,6 +8,7 @@ import test from 'node:test';
 import { createAiProvider } from '@chatbot/ai';
 import type {
   ActionLog,
+  KnowledgeCsvImportResponse,
   Lead,
   MissingAnswerItem,
   Organization,
@@ -24,7 +25,12 @@ import { createApiServer } from './server.js';
 import { FileStore } from './store.js';
 import type { ApiConfig } from './config.js';
 import { NullEmailProvider, ResendEmailProvider, type EmailProvider } from './email.js';
-import { createKnowledgeImportDraft, isPrivateAddress, normalizeKnowledgeImportUrl } from './knowledge-import.js';
+import {
+  createKnowledgeImportDraft,
+  importKnowledgeFromCsv,
+  isPrivateAddress,
+  normalizeKnowledgeImportUrl,
+} from './knowledge-import.js';
 
 interface TestApi {
   url: string;
@@ -174,6 +180,57 @@ test('knowledge URL import blocks private network targets', async () => {
     assert.equal(response.status, 400);
     const body = await json<Record<string, unknown>>(response);
     assert.equal(body['code'], 'import_private_host');
+  } finally {
+    await api.close();
+  }
+});
+
+test('knowledge CSV import creates localized drafts from spreadsheet rows', () => {
+  const result = importKnowledgeFromCsv({
+    locale: 'bg',
+    intent: 'custom',
+    csv: [
+      'title,intent,keywords,answer_bg,answer_en',
+      '"Доставка","delivery_policy","доставка; куриер","Безплатна доставка над 100 лв.","Free delivery above 100 BGN"',
+      '"Гаранция","warranty","гаранция","Гаранцията е 24 месеца.","Warranty is 24 months."',
+      '"Празен ред","custom","","",""',
+    ].join('\n'),
+  });
+
+  assert.equal(result.drafts.length, 2);
+  assert.equal(result.skippedRows, 1);
+  assert.equal(result.drafts[0]?.title, 'Доставка');
+  assert.equal(result.drafts[0]?.intent, 'delivery_policy');
+  assert.deepEqual(result.drafts[0]?.keywords, ['доставка', 'куриер']);
+  assert.equal(result.drafts[0]?.answer.bg, 'Безплатна доставка над 100 лв.');
+  assert.equal(result.drafts[0]?.answer.en, 'Free delivery above 100 BGN');
+  assert.equal(result.drafts[1]?.intent, 'warranty_policy');
+});
+
+test('admin can import CSV knowledge drafts', async () => {
+  const api = await createTestApi();
+  try {
+    const response = await fetch(`${api.url}/admin/sites/site_test/knowledge/import-csv`, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer test-token',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        locale: 'bg',
+        intent: 'support',
+        csv: ['Въпрос,Отговор', 'Как работи поддръжката?,Пишете ни и ще ви върнем отговор в работен ден.'].join('\n'),
+      }),
+    });
+    assert.equal(response.status, 200);
+    const imported = await json<KnowledgeCsvImportResponse>(response);
+    assert.equal(imported.drafts.length, 1);
+    assert.equal(imported.drafts[0]?.title, 'Как работи поддръжката?');
+    assert.equal(imported.drafts[0]?.intent, 'support');
+    assert.equal(imported.drafts[0]?.answer.bg, 'Пишете ни и ще ви върнем отговор в работен ден.');
+
+    const data = await api.store.read();
+    assert.equal(data.knowledgeEntries.length, 0);
   } finally {
     await api.close();
   }

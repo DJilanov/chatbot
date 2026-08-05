@@ -13,6 +13,7 @@ const state = {
   sites: [],
   billingPlans: [],
   missingAnswers: [],
+  importDrafts: [],
   selectedSiteId: localStorage.getItem('admin:selectedSiteId') || '',
 };
 
@@ -99,6 +100,7 @@ function clearWorkspace() {
   state.sites = [];
   state.billingPlans = [];
   state.missingAnswers = [];
+  state.importDrafts = [];
   state.selectedSiteId = '';
   localStorage.removeItem('admin:selectedSiteId');
   renderIdentity();
@@ -107,6 +109,7 @@ function clearWorkspace() {
   qs('#site-list').innerHTML = '';
   qs('#knowledge-count').textContent = '0 entries';
   qs('#knowledge-list').innerHTML = '';
+  qs('#knowledge-import-draft-list').innerHTML = '';
   qs('#missing-answer-count').textContent = '0 open';
   qs('#missing-answer-list').innerHTML = '';
   qs('#user-count').textContent = '0 users';
@@ -194,6 +197,7 @@ async function optionalApi(path) {
 function fillConfig(site) {
   const form = qs('#config-form');
   const importForm = qs('#knowledge-import-form');
+  const csvImportForm = qs('#knowledge-csv-import-form');
   form.elements.title.value = site.config.branding.title || '';
   form.elements.subtitle.value = site.config.branding.subtitle || '';
   form.elements.assistantName.value = site.config.branding.assistantName || '';
@@ -206,6 +210,7 @@ function fillConfig(site) {
   form.elements.fallbackMessage.value = site.config.fallbackMessage || '';
   form.elements.leadCapturePrompt.value = site.config.leadCapturePrompt || '';
   if (importForm) importForm.elements.locale.value = site.config.defaultLocale === 'en' ? 'en' : 'bg';
+  if (csvImportForm) csvImportForm.elements.locale.value = site.config.defaultLocale === 'en' ? 'en' : 'bg';
 }
 
 function renderKnowledge(entries) {
@@ -560,8 +565,27 @@ async function importKnowledgeUrl(event) {
       intent: values.intent,
     }),
   });
+  state.importDrafts = [draft];
+  renderKnowledgeImportDrafts(state.importDrafts, 0);
   applyKnowledgeDraft(draft);
   setStatus(`Knowledge draft imported from ${draft.sourceUrl}. Review it before saving.`, 'ok');
+}
+
+async function importKnowledgeCsv(event) {
+  event.preventDefault();
+  if (!state.selectedSiteId) return;
+  const values = formRecord(event.currentTarget);
+  const response = await api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/knowledge/import-csv`, {
+    method: 'POST',
+    body: JSON.stringify({
+      csv: values.csv,
+      locale: values.locale,
+      intent: values.intent,
+    }),
+  });
+  state.importDrafts = response.drafts;
+  renderKnowledgeImportDrafts(response.drafts, response.skippedRows);
+  setStatus(`Imported ${response.drafts.length} CSV drafts. Review a draft before saving.`, 'ok');
 }
 
 function draftKnowledgeFromMissingAnswer(actionId) {
@@ -575,6 +599,40 @@ function draftKnowledgeFromMissingAnswer(actionId) {
   };
   applyKnowledgeDraft(draft);
   setStatus('Knowledge draft prepared. Add the approved answer before saving.', 'ok');
+}
+
+function renderKnowledgeImportDrafts(drafts, skippedRows) {
+  const list = qs('#knowledge-import-draft-list');
+  list.innerHTML =
+    drafts
+      .map(
+        (draft, index) => `
+          <article class="record">
+            <div class="record-heading">
+              <strong>${escapeHtml(draft.title)}</strong>
+              <span class="pill">${escapeHtml(draft.intent)} | ${escapeHtml(draft.locale)}</span>
+            </div>
+            <p>${escapeHtml(draft.keywords.join(', '))}</p>
+            <p>${escapeHtml(draftPreview(draft))}</p>
+            <div class="record-actions">
+              <button type="button" data-apply-knowledge-draft="${escapeHtml(index)}">Use draft</button>
+            </div>
+          </article>
+        `,
+      )
+      .join('');
+  if (skippedRows) {
+    list.insertAdjacentHTML('beforeend', `<p>${escapeHtml(skippedRows)} CSV rows were skipped.</p>`);
+  }
+  list.querySelectorAll('button[data-apply-knowledge-draft]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const index = Number(button.dataset.applyKnowledgeDraft);
+      const draft = state.importDrafts[index];
+      if (!draft) return;
+      applyKnowledgeDraft(draft);
+      setStatus('Knowledge draft loaded. Review it before saving.', 'ok');
+    });
+  });
 }
 
 function applyKnowledgeDraft(draft) {
@@ -717,6 +775,10 @@ function missingAnswerMeta(item) {
     new Date(item.createdAt).toLocaleString(),
   ];
   return parts.filter(Boolean).join(' | ');
+}
+
+function draftPreview(draft) {
+  return String(draft.answer?.bg || draft.answer?.en || '').slice(0, 220);
 }
 
 function guessKnowledgeIntent(text) {
@@ -872,6 +934,9 @@ qs('#knowledge-form').addEventListener('submit', (event) => {
 });
 qs('#knowledge-import-form').addEventListener('submit', (event) => {
   void importKnowledgeUrl(event).catch((error) => setStatus(error.message, 'error'));
+});
+qs('#knowledge-csv-import-form').addEventListener('submit', (event) => {
+  void importKnowledgeCsv(event).catch((error) => setStatus(error.message, 'error'));
 });
 qs('#refresh-button').addEventListener('click', () => {
   void loadAll().catch((error) => setStatus(error.message, 'error'));
