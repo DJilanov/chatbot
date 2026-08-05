@@ -275,6 +275,46 @@ h3 {
   font-weight: 900;
 }
 
+.outcomes {
+  max-width: none;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+}
+
+.outcomes .section-heading,
+.outcome-grid {
+  max-width: 1180px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.outcome-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.outcome-grid article {
+  min-height: 214px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 22px;
+}
+
+.outcome-grid span {
+  display: inline-flex;
+  margin-bottom: 28px;
+  color: var(--teal);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.outcome-grid p {
+  color: var(--muted);
+  line-height: 1.58;
+}
+
 .section {
   max-width: 1180px;
   margin: 0 auto;
@@ -332,6 +372,97 @@ h3 {
 .prompt-grid button:hover {
   border-color: var(--blue);
   box-shadow: 0 12px 28px rgba(23, 92, 255, 0.12);
+}
+
+.product-tour {
+  display: grid;
+  grid-template-columns: 0.78fr 1.22fr;
+  gap: 42px;
+  align-items: center;
+}
+
+.tour-copy p {
+  color: var(--muted);
+  line-height: 1.62;
+}
+
+.tour-board {
+  overflow: hidden;
+  border: 1px solid #c9d4e5;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 20px 50px rgba(15, 36, 55, 0.12);
+}
+
+.tour-toolbar,
+.tour-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 18px;
+}
+
+.tour-toolbar {
+  color: #fff;
+  background: var(--navy);
+}
+
+.tour-toolbar span,
+.tour-footer span,
+.tour-columns small {
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.tour-toolbar strong {
+  color: #75e6b2;
+}
+
+.tour-columns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--line);
+}
+
+.tour-columns article {
+  min-height: 214px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: #fff;
+  padding: 20px;
+}
+
+.tour-columns small {
+  color: var(--teal);
+}
+
+.tour-columns p {
+  margin: 28px 0;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.28;
+}
+
+.tour-columns strong {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.tour-footer {
+  flex-wrap: wrap;
+  color: var(--muted);
+  background: #f8fafc;
+}
+
+.tour-footer span {
+  color: var(--navy);
 }
 
 .feature-grid,
@@ -700,6 +831,9 @@ h3 {
   .walkthrough,
   .demo,
   .prompt-grid,
+  .outcome-grid,
+  .product-tour,
+  .tour-columns,
   .surface-grid {
     grid-template-columns: 1fr;
   }
