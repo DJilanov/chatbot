@@ -133,6 +133,23 @@ export async function resolveChat(input: ChatEngineInput): Promise<ChatEngineRes
         productComparison: comparison,
       });
     }
+    if (hasCommerceHandoffIntent(normalized)) {
+      const handoffCards = visibleMatches.map((match) => productCard(match, input.locale, 'checkout_handoff'));
+      const hasProductLinks = handoffCards.some((card) => card.productUrl);
+      return deterministicResult({
+        reply: commerceHandoffReply(input.locale, handoffCards.length, hasProductLinks),
+        intent: 'commerce_handoff',
+        action: 'checkout_handoff',
+        needsLeadDetails: !hasProductLinks,
+        metadata: {
+          productIds: handoffCards.map((card) => card.id),
+          productSkus: handoffCards.map((card) => card.sku).filter(Boolean),
+          productCount: handoffCards.length,
+        },
+        productCards: handoffCards,
+        reason: 'Visitor showed cart, checkout, order, or purchase intent for matched products',
+      });
+    }
     return deterministicResult({
       reply: productReply(input.locale, cards.length),
       intent: 'product_recommendation',
@@ -312,6 +329,7 @@ async function completeWithAi(input: ChatEngineInput): Promise<string> {
     input.site.config.systemPrompt,
     'Always disclose through behavior that you are an AI assistant if asked.',
     'Do not invent prices, discounts, order status, payment status, delivery status, legal terms, or unsupported operational facts.',
+    'Do not claim that you added products to a cart, created an order, reserved stock, charged payment, or completed checkout.',
     'Use product feed facts only when product data is explicitly supplied by the system. Do not invent availability or product details.',
     'If the approved knowledge below does not answer the question, ask for contact details and say the team can follow up.',
     knowledgeContext ? `Approved knowledge:\n${knowledgeContext}` : 'Approved knowledge is currently empty.',
@@ -363,7 +381,7 @@ function productScore(product: ProductItem, normalized: string, tokens: Set<stri
   return score;
 }
 
-function productCard(match: ProductMatch, locale: LocaleCode): ProductCard {
+function productCard(match: ProductMatch, locale: LocaleCode, action: ProductCard['action'] = 'view_product'): ProductCard {
   const product = match.product;
   return {
     id: product.id,
@@ -378,6 +396,8 @@ function productCard(match: ProductMatch, locale: LocaleCode): ProductCard {
     availability: product.availability,
     imageUrl: product.imageUrl,
     productUrl: product.productUrl,
+    action,
+    actionLabel: productActionLabel(action, locale),
     reason: match.reason || (locale === 'bg' ? 'Съвпада с търсенето ви.' : 'Matches your search.'),
   };
 }
@@ -398,6 +418,22 @@ function productComparisonReply(locale: LocaleCode, count: number): string {
     return `Сравних ${count} продукта от каталога по наличните данни. Ако липсва детайл, не е бил подаден във фийда.`;
   }
   return `I compared ${count} products from the catalog using the available feed data. Missing details were not supplied in the feed.`;
+}
+
+function commerceHandoffReply(locale: LocaleCode, count: number, hasProductLinks: boolean): string {
+  if (!hasProductLinks) {
+    return locale === 'bg'
+      ? 'Намерих подходящ продукт, но във фийда няма линк за продължаване към покупка. Оставете email или телефон и екипът може да помогне.'
+      : 'I found a matching product, but the feed does not include a link to continue the purchase. Please leave an email or phone number and the team can help.';
+  }
+  if (locale === 'bg') {
+    return count === 1
+      ? 'Мога да ви насоча към продукта, но не мога да добавям в количка или да завършвам поръчка от чата. Отворете продукта от бутона в картата.'
+      : `Мога да ви насоча към тези ${count} продукта, но не мога да добавям в количка или да завършвам поръчка от чата. Отворете желания продукт от картите.`;
+  }
+  return count === 1
+    ? 'I can route you to the product, but I cannot add items to a cart or complete checkout in chat. Open the product from the card button.'
+    : `I can route you to these ${count} products, but I cannot add items to a cart or complete checkout in chat. Open the product you want from the cards.`;
 }
 
 function buildProductComparison(matches: ProductMatch[], locale: LocaleCode): ProductComparison {
@@ -503,6 +539,11 @@ function comparisonEmptyValue(locale: LocaleCode): string {
   return locale === 'bg' ? 'Не е посочено' : 'Not specified';
 }
 
+function productActionLabel(action: ProductCard['action'], locale: LocaleCode): string | null {
+  if (action === 'checkout_handoff') return locale === 'bg' ? 'Към продукта' : 'Continue';
+  return null;
+}
+
 function productReason(product: ProductItem, locale: LocaleCode, normalized: string): string {
   if (product.sku && normalized.includes(normalizeSearchText(product.sku))) {
     return locale === 'bg' ? `Съвпада със SKU ${product.sku}.` : `Matches SKU ${product.sku}.`;
@@ -535,6 +576,11 @@ function hasProductSearchIntent(normalized: string): boolean {
 function hasProductComparisonIntent(normalized: string): boolean {
   return /\b(compare|comparison|versus|vs|difference|differences|better)\b/i.test(normalized)
     || /(сравни|сравнение|разлика|разлики|по[-\s]?доб)/i.test(normalized);
+}
+
+function hasCommerceHandoffIntent(normalized: string): boolean {
+  return /\b(buy|purchase|order|checkout|cart|basket|add to cart|reserve)\b/i.test(normalized)
+    || /(купи|купя|купувам|поръчай|поръчка|поръчам|количка|кошница|плащане|резервирай)/i.test(normalized);
 }
 
 function leadReply(site: Site, locale: LocaleCode, contact: ContactDetails): string {

@@ -1085,6 +1085,7 @@ Implemented in the repo:
 - CSV/JSON product feed ingestion with admin product review, upsert/replace modes, enable/delete controls, and site data export coverage.
 - Public chat product recommendations that return product cards with image, price, availability, product URL, recommendation reason, and product-click audit events.
 - Product comparison responses for imported products, with product cards, comparison rows, and a widget compare button for multi-product results.
+- Safe checkout/cart handoff boundaries that route purchase intent to product pages, label the CTA separately, and audit handoff clicks without claiming cart or order changes.
 
 Still required before a serious paid launch:
 
@@ -1152,7 +1153,7 @@ Must build next:
 - Human approval workflow for imported/translated knowledge.
 - Missing-answer analytics and weekly summaries generated from failed or low-confidence conversations.
 - Product feed connectors for WooCommerce, OpenCart, Shopify, CloudCart, and Jilanov ecommerce.
-- Safe ecommerce actions: cart handoff, checkout handoff, order-status routing, return/warranty/invoice routing, and staff fallback when system data is missing.
+- Safe ecommerce actions beyond handoff: platform cart API adapters, order-status routing, return/warranty/invoice routing, and staff fallback when system data is missing.
 - CRM and sales operations: HubSpot, Pipedrive, Zoho, email notifications, webhook delivery, calendar/demo booking, duplicate lead detection, and lead summaries.
 - Channel expansion after website proof: Viber, Messenger, WhatsApp, Instagram, email, and Slack/Teams notifications.
 - Admin support queue with ticket status, transcript, reason, source URL, language, internal notes, assignment, and SLA.
@@ -1230,7 +1231,7 @@ Copy principles:
    - Pasted FAQ knowledge import. Completed as a reviewed draft workflow.
    - PDF/DOCX knowledge import. Completed as a reviewed draft workflow.
    - Missing-answer queue. Completed in the current admin/API slice.
-   - Product feed ingestion, product cards, and product comparison. Completed for CSV/JSON feeds with read-only product recommendations and comparison tables.
+   - Product feed ingestion, product cards, product comparison, and checkout/cart handoff boundaries. Completed for CSV/JSON feeds with read-only product recommendations, comparison tables, and safe product-page routing.
    - CRM/calendar integration.
    - Viber/Messenger roadmap.
 
@@ -1249,5 +1250,5 @@ Copy principles:
 
 1. Capture real product screenshots from the deployed widget, admin lead inbox, missing-answer queue, action audit, and owner email notification.
 2. Start 3 pilot installs: one ecommerce store, one service business, and one B2B website.
-3. Add checkout/cart handoff boundaries and ecommerce platform connectors based on pilot demand.
+3. Add ecommerce platform connectors and deeper order/return/warranty routing based on pilot demand.
 4. Add CRM/calendar integrations and then Viber/Messenger channels after the website assistant has measurable pilot results.

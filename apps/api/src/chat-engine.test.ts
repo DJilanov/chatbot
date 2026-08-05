@@ -97,6 +97,7 @@ test('product matches return product recommendation cards', async () => {
   assert.equal(result.action, 'product_recommendation');
   assert.equal(result.productCards?.length, 1);
   assert.equal(result.productCards?.[0]?.sku, 'T14-BG');
+  assert.equal(result.productCards?.[0]?.action, 'view_product');
   assert.match(result.reply, /matching products|one matching product/);
 });
 
@@ -130,6 +131,40 @@ test('comparison requests return product comparison rows', async () => {
   assert.equal(result.productComparison?.products.length, 2);
   assert.ok(result.productComparison?.rows.some((row) => row.label === 'Price'));
   assert.ok(result.productComparison?.rows.some((row) => row.label === 'Memory'));
+});
+
+test('commerce buying intent returns safe checkout handoff cards', async () => {
+  const result = await resolveChat({
+    site: { ...site, config: { ...site.config, mode: 'commerce_actions' } },
+    knowledgeEntries: knowledge,
+    productItems: products,
+    history: [],
+    message: 'I want to buy T14-BG',
+    locale: 'en',
+    aiProvider: nullProvider,
+  });
+
+  assert.equal(result.intent, 'commerce_handoff');
+  assert.equal(result.action, 'checkout_handoff');
+  assert.equal(result.productCards?.[0]?.action, 'checkout_handoff');
+  assert.equal(result.productCards?.[0]?.actionLabel, 'Continue');
+  assert.doesNotMatch(result.reply, /added|created|completed checkout/i);
+});
+
+test('commerce handoff asks for contact when product links are missing', async () => {
+  const result = await resolveChat({
+    site: { ...site, config: { ...site.config, mode: 'commerce_actions' } },
+    knowledgeEntries: knowledge,
+    productItems: [{ ...products[0]!, productUrl: null }],
+    history: [],
+    message: 'I want to buy T14-BG',
+    locale: 'en',
+    aiProvider: nullProvider,
+  });
+
+  assert.equal(result.intent, 'commerce_handoff');
+  assert.equal(result.needsLeadDetails, true);
+  assert.match(result.reply, /does not include a link/);
 });
 
 test('product SKUs with long numbers are not captured as phone leads', async () => {

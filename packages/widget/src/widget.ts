@@ -47,6 +47,8 @@ interface ProductCard {
   availability: 'in_stock' | 'out_of_stock' | 'preorder' | 'unknown';
   imageUrl: string | null;
   productUrl: string | null;
+  action: 'view_product' | 'checkout_handoff';
+  actionLabel: string | null;
   reason: string;
 }
 
@@ -502,7 +504,7 @@ const persisted: PersistedState = {
               <small>${escapeHtml(card.reason)}</small>
               ${
                 card.productUrl
-                  ? `<a href="${escapeHtml(card.productUrl)}" target="_blank" rel="noopener" data-product-id="${escapeHtml(card.id)}">${escapeHtml(copy.viewProduct)}</a>`
+                  ? `<a href="${escapeHtml(card.productUrl)}" target="_blank" rel="noopener" data-product-id="${escapeHtml(card.id)}">${escapeHtml(card.actionLabel || copy.viewProduct)}</a>`
                   : ''
               }
             </div>
@@ -578,11 +580,13 @@ const persisted: PersistedState = {
 
   async function sendProductClick(card: ProductCard): Promise<void> {
     if (!config) return;
-    emit('product_clicked', {
+    const action = card.action === 'checkout_handoff' ? 'checkout_handoff_clicked' : 'product_clicked';
+    emit(action, {
       productId: card.id,
       sku: card.sku,
       title: card.title,
       productUrl: card.productUrl,
+      action: card.action,
     });
     await fetch(`${apiUrl}/public/sites/${encodeURIComponent(siteId)}/actions`, {
       method: 'POST',
@@ -590,7 +594,7 @@ const persisted: PersistedState = {
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({
         conversationId,
-        action: 'product_clicked',
+        action,
         status: 'completed',
         confidence: 'customer_click',
         locale: activeLocale(config),
@@ -599,6 +603,7 @@ const persisted: PersistedState = {
           sku: card.sku,
           title: card.title,
           productUrl: card.productUrl,
+          productCardAction: card.action,
         },
       }),
     }).catch(() => undefined);
@@ -674,6 +679,7 @@ function normalizeProductCards(value: unknown): ProductCard[] {
       const title = textOrNull(record['title']);
       if (!id || !title) return null;
       const availability = record['availability'];
+      const action = record['action'] === 'checkout_handoff' ? 'checkout_handoff' : 'view_product';
       return {
         id,
         title,
@@ -688,6 +694,8 @@ function normalizeProductCards(value: unknown): ProductCard[] {
             : 'unknown',
         imageUrl: textOrNull(record['imageUrl']),
         productUrl: textOrNull(record['productUrl']),
+        action,
+        actionLabel: textOrNull(record['actionLabel']),
         reason: textOrNull(record['reason']) ?? '',
       };
     })

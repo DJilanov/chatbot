@@ -30,6 +30,7 @@ export type PublicChatIntent =
   | 'human_handoff'
   | 'product_recommendation'
   | 'product_comparison'
+  | 'commerce_handoff'
   | 'pricing'
   | 'fallback'
   | 'ai_answer';
@@ -352,6 +353,8 @@ export interface ProductImportResponse {
   products: ProductItem[];
 }
 
+export type ProductCardAction = 'view_product' | 'checkout_handoff';
+
 export interface ProductCard {
   id: string;
   title: string;
@@ -365,6 +368,8 @@ export interface ProductCard {
   availability: ProductAvailability;
   imageUrl: string | null;
   productUrl: string | null;
+  action: ProductCardAction;
+  actionLabel: string | null;
   reason: string;
 }
 

@@ -402,6 +402,20 @@ test('admin can import product feed and public chat returns product cards', asyn
     assert.equal(chat.productCards?.[0]?.priceLabel, '1,299 BGN');
     assert.equal(chat.needsLeadDetails, false);
 
+    const handoffResponse = await fetch(`${api.url}/public/sites/site_test/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: 'I want to buy T14-BG',
+        locale: 'en',
+      }),
+    });
+    assert.equal(handoffResponse.status, 200);
+    const handoff = await json<PublicChatResponse>(handoffResponse);
+    assert.equal(handoff.intent, 'commerce_handoff');
+    assert.equal(handoff.productCards?.[0]?.action, 'checkout_handoff');
+    assert.equal(handoff.productCards?.[0]?.actionLabel, 'Continue');
+
     const clickResponse = await fetch(`${api.url}/public/sites/site_test/actions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -423,6 +437,7 @@ test('admin can import product feed and public chat returns product cards', asyn
     assert.equal(data.productItems.length, 1);
     assert.ok(data.actionLogs.some((action) => action.action === 'product_feed_import'));
     assert.ok(data.actionLogs.some((action) => action.action === 'product_recommendation'));
+    assert.ok(data.actionLogs.some((action) => action.action === 'checkout_handoff'));
     assert.ok(data.actionLogs.some((action) => action.action === 'product_clicked' && action.metadata['sku'] === 'T14-BG'));
   } finally {
     await api.close();

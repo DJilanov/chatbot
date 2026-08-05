@@ -352,7 +352,7 @@ const persisted = {
               ${card.description ? `<p>${escapeHtml(card.description)}</p>` : ''}
               <small>${escapeHtml(card.reason)}</small>
               ${card.productUrl
-            ? `<a href="${escapeHtml(card.productUrl)}" target="_blank" rel="noopener" data-product-id="${escapeHtml(card.id)}">${escapeHtml(copy.viewProduct)}</a>`
+            ? `<a href="${escapeHtml(card.productUrl)}" target="_blank" rel="noopener" data-product-id="${escapeHtml(card.id)}">${escapeHtml(card.actionLabel || copy.viewProduct)}</a>`
             : ''}
             </div>
           </article>
@@ -424,11 +424,13 @@ const persisted = {
     async function sendProductClick(card) {
         if (!config)
             return;
-        emit('product_clicked', {
+        const action = card.action === 'checkout_handoff' ? 'checkout_handoff_clicked' : 'product_clicked';
+        emit(action, {
             productId: card.id,
             sku: card.sku,
             title: card.title,
             productUrl: card.productUrl,
+            action: card.action,
         });
         await fetch(`${apiUrl}/public/sites/${encodeURIComponent(siteId)}/actions`, {
             method: 'POST',
@@ -436,7 +438,7 @@ const persisted = {
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
             body: JSON.stringify({
                 conversationId,
-                action: 'product_clicked',
+                action,
                 status: 'completed',
                 confidence: 'customer_click',
                 locale: activeLocale(config),
@@ -445,6 +447,7 @@ const persisted = {
                     sku: card.sku,
                     title: card.title,
                     productUrl: card.productUrl,
+                    productCardAction: card.action,
                 },
             }),
         }).catch(() => undefined);
@@ -521,6 +524,7 @@ function normalizeProductCards(value) {
         if (!id || !title)
             return null;
         const availability = record['availability'];
+        const action = record['action'] === 'checkout_handoff' ? 'checkout_handoff' : 'view_product';
         return {
             id,
             title,
@@ -534,6 +538,8 @@ function normalizeProductCards(value) {
                 : 'unknown',
             imageUrl: textOrNull(record['imageUrl']),
             productUrl: textOrNull(record['productUrl']),
+            action,
+            actionLabel: textOrNull(record['actionLabel']),
             reason: textOrNull(record['reason']) ?? '',
         };
     })
