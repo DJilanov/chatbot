@@ -44,7 +44,7 @@ POST /public/sites/:siteId/leads
 
 Requires either `email` or `phone`.
 
-If the site has `config.integrations.leadWebhookUrl`, the API posts a `lead.created` webhook after the lead is persisted. Webhook delivery failures do not fail the visitor request; they are recorded in the action audit.
+If the site has `config.integrations.leadWebhookUrl`, the API posts a `lead.created` webhook after the lead is persisted. If `EMAIL_PROVIDER=resend` is configured and the site has `config.contact.email`, the API also sends a lead email notification. Delivery failures do not fail the visitor request; they are recorded in the action audit.
 
 ### Send Feedback
 
@@ -238,7 +238,19 @@ new, waiting_customer, waiting_staff, resolved, blocked
 
 CSV lead export requires the same admin authorization header as the JSON admin routes.
 
-When a chat flow creates a support ticket and `config.integrations.supportWebhookUrl` is configured, the API posts a `support_ticket.created` webhook and writes the delivery result to the action audit.
+When a chat flow creates a support ticket and `config.integrations.supportWebhookUrl` is configured, the API posts a `support_ticket.created` webhook and writes the delivery result to the action audit. If `EMAIL_PROVIDER=resend` is configured and the site has `config.contact.email`, the API also sends a support-ticket email notification and audits the result.
+
+## Email Provider
+
+Email notifications are disabled unless `EMAIL_PROVIDER=resend`, `EMAIL_PROVIDER_API_KEY`, and `EMAIL_FROM` are set. The recipient comes from the site's contact email, not from an environment variable.
+
+```bash
+EMAIL_PROVIDER=resend
+EMAIL_PROVIDER_API_KEY=re_xxx
+EMAIL_FROM="Assistant <notify@example.com>"
+```
+
+`EMAIL_PROVIDER_BASE_URL` is only needed for tests or proxying a compatible provider API.
 
 ## Local Demo
 

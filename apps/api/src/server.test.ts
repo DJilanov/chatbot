@@ -21,6 +21,7 @@ import { defaultSiteConfig } from './defaults.js';
 import { createApiServer } from './server.js';
 import { FileStore } from './store.js';
 import type { ApiConfig } from './config.js';
+import { NullEmailProvider, ResendEmailProvider, type EmailProvider } from './email.js';
 
 interface TestApi {
   url: string;
@@ -33,7 +34,11 @@ interface LeadResponse {
   status: string;
 }
 
-async function createTestApi(configure?: { site?: (site: Site) => void; organization?: (org: Organization) => void }): Promise<TestApi> {
+async function createTestApi(configure?: {
+  site?: (site: Site) => void;
+  organization?: (org: Organization) => void;
+  emailProvider?: EmailProvider;
+}): Promise<TestApi> {
   const dir = await mkdtemp(join(tmpdir(), 'chatbot-api-'));
   const store = new FileStore(join(dir, 'data.json'));
   const organization: Organization = {
@@ -71,6 +76,7 @@ async function createTestApi(configure?: { site?: (site: Site) => void; organiza
     publicBaseUrl: 'http://127.0.0.1',
     integrationTimeoutMs: 1000,
     aiProvider: createAiProvider({ provider: 'null' }),
+    emailProvider: configure?.emailProvider ?? new NullEmailProvider(),
   };
   const server = createApiServer(config, store);
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -188,6 +194,81 @@ test('lead webhooks are delivered and audited', async () => {
     const delivery = data.actionLogs.find((item) => item.action === 'lead_webhook_delivery');
     assert.equal(delivery?.status, 'completed');
     assert.equal(delivery?.metadata['responseStatus'], 204);
+  } finally {
+    await api.close();
+    await receiver.close();
+  }
+});
+
+test('lead email notifications are delivered and audited', async () => {
+  const receiver = await createEmailReceiver('email_lead_test');
+  const api = await createTestApi({
+    emailProvider: new ResendEmailProvider('re_test', 'Assistant <notify@example.com>', receiver.url),
+    site: (site) => {
+      site.config.contact.email = 'owner@example.com';
+    },
+  });
+  try {
+    const response = await fetch(`${api.url}/public/sites/site_test/leads`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Email Lead',
+        company: 'Example Co',
+        email: 'email-lead@example.com',
+        message: 'Send this to the email provider',
+        consent: true,
+      }),
+    });
+    assert.equal(response.status, 201);
+    assert.equal(receiver.requests.length, 1);
+    const request = receiver.requests[0];
+    assert.equal(request?.path, '/emails');
+    assert.equal(request?.authorization, 'Bearer re_test');
+    assert.equal(request?.payload['from'], 'Assistant <notify@example.com>');
+    assert.deepEqual(request?.payload['to'], ['owner@example.com']);
+    assert.match(String(request?.payload['subject']), /New chatbot lead/);
+    assert.match(String(request?.payload['text']), /email-lead@example\.com/);
+
+    const data = await api.store.read();
+    const delivery = data.actionLogs.find((item) => item.action === 'lead_email_delivery');
+    assert.equal(delivery?.status, 'completed');
+    assert.equal(delivery?.metadata['provider'], 'resend');
+    assert.equal(delivery?.metadata['recipientDomain'], 'example.com');
+    assert.equal(delivery?.metadata['responseStatus'], 200);
+    assert.equal(delivery?.metadata['messageId'], 'email_lead_test');
+  } finally {
+    await api.close();
+    await receiver.close();
+  }
+});
+
+test('support email notifications are delivered and audited', async () => {
+  const receiver = await createEmailReceiver('email_support_test');
+  const api = await createTestApi({
+    emailProvider: new ResendEmailProvider('re_test', 'Assistant <notify@example.com>', receiver.url),
+    site: (site) => {
+      site.config.contact.email = 'owner@example.com';
+    },
+  });
+  try {
+    const response = await fetch(`${api.url}/public/sites/site_test/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: 'I want to speak with a person from support',
+        locale: 'en',
+      }),
+    });
+    assert.equal(response.status, 200);
+    assert.equal(receiver.requests.length, 1);
+    assert.match(String(receiver.requests[0]?.payload['subject']), /Human handoff requested/);
+    assert.match(String(receiver.requests[0]?.payload['text']), /I want to speak with a person from support/);
+
+    const data = await api.store.read();
+    const delivery = data.actionLogs.find((item) => item.action === 'support_ticket_email_delivery');
+    assert.equal(delivery?.status, 'completed');
+    assert.equal(delivery?.metadata['messageId'], 'email_support_test');
   } finally {
     await api.close();
     await receiver.close();
@@ -584,6 +665,48 @@ async function createWebhookReceiver(): Promise<{
   const address = server.address() as AddressInfo;
   return {
     url: `http://127.0.0.1:${address.port}/webhook`,
+    requests,
+    close: async () => {
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve()));
+      });
+    },
+  };
+}
+
+async function createEmailReceiver(messageId: string): Promise<{
+  url: string;
+  requests: Array<{
+    path: string;
+    authorization: string | undefined;
+    payload: Record<string, unknown>;
+  }>;
+  close: () => Promise<void>;
+}> {
+  const requests: Array<{
+    path: string;
+    authorization: string | undefined;
+    payload: Record<string, unknown>;
+  }> = [];
+  const server = createServer((req, res) => {
+    void readRequestJson(req)
+      .then((payload) => {
+        const authorization = Array.isArray(req.headers.authorization)
+          ? req.headers.authorization.join(',')
+          : req.headers.authorization;
+        requests.push({ path: req.url ?? '', authorization, payload });
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ id: messageId }));
+      })
+      .catch(() => {
+        res.writeHead(400);
+        res.end();
+      });
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address() as AddressInfo;
+  return {
+    url: `http://127.0.0.1:${address.port}`,
     requests,
     close: async () => {
       await new Promise<void>((resolve, reject) => {

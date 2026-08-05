@@ -1,4 +1,5 @@
 import { createAiProvider, type AiProvider, type AiProviderId } from '@chatbot/ai';
+import { createEmailProvider, type EmailProvider, type EmailProviderId } from './email.js';
 
 export interface ApiConfig {
   port: number;
@@ -7,6 +8,7 @@ export interface ApiConfig {
   publicBaseUrl: string;
   integrationTimeoutMs: number;
   aiProvider: AiProvider;
+  emailProvider: EmailProvider;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
@@ -24,6 +26,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
       model: env['AI_PROVIDER_MODEL']?.trim() || undefined,
       baseUrl: env['AI_PROVIDER_BASE_URL']?.trim() || undefined,
     }),
+    emailProvider: createEmailProvider({
+      provider: parseEmailProvider(env['EMAIL_PROVIDER']),
+      apiKey: env['EMAIL_PROVIDER_API_KEY']?.trim() || undefined,
+      from: env['EMAIL_FROM']?.trim() || undefined,
+      baseUrl: env['EMAIL_PROVIDER_BASE_URL']?.trim() || undefined,
+    }),
   };
 }
 
@@ -35,4 +43,9 @@ function parseInteger(value: string | undefined, fallback: number): number {
 function parseAiProvider(value: string | undefined): AiProviderId {
   if (value === 'openai' || value === 'gemini' || value === 'null') return value;
   return 'null';
+}
+
+function parseEmailProvider(value: string | undefined): EmailProviderId {
+  if (value === 'resend') return value;
+  return 'none';
 }

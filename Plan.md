@@ -1066,20 +1066,20 @@ Implemented in the repo:
 - Privacy operations for site data export, data-subject erasure, and manual retention cleanup using each site's configured retention window.
 - Assistant eval release gate with deterministic cases for knowledge precedence, localized answers, pricing, handoff, lead capture, fallback, disabled knowledge, safe AI fallback, and unsafe operational-claim blocking.
 - GitHub Actions CI that runs type-check, build, tests, and assistant evals on `main` pushes and pull requests.
+- Resend-compatible email-provider boundary for lead and support-ticket notifications, with delivery results recorded in the action audit.
 - Local landing page with live widget demo and lead form.
 - Deterministic local AI provider plus OpenAI/Gemini provider boundaries.
-- Regression tests for chat guardrails, file persistence, lead operations, support operations, and lead webhook delivery.
+- Regression tests for chat guardrails, file persistence, lead operations, support operations, lead webhook delivery, and email notification delivery.
 
 Still required before a serious paid launch:
 
 - Production database and migrations.
 - Production password/session auth, invitation emails, MFA, and password reset flow.
 - Payment-provider billing, hosted checkout, invoices, trial conversion, and subscription webhooks.
-- Mail-provider notifications in addition to webhook hooks.
+- Production-grade email templates, bounce handling, sender-domain setup, and notification preferences.
 - CRM/helpdesk/calendar integrations.
 - Real product proof: customer logos, testimonials, conversion metrics, demo video, and screenshots from pilot installs.
 - Privacy policy, DPA, terms, data deletion/export controls, and production retention jobs.
-- Privacy policy, DPA, terms, and scheduled production retention jobs.
 
 ## Open Decisions
 

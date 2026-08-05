@@ -72,6 +72,16 @@ interface WebhookDeliveryInput {
   payload: Record<string, unknown>;
 }
 
+interface EmailDeliveryInput {
+  siteId: string;
+  conversationId: string | null;
+  action: string;
+  to: string;
+  locale: LocaleCode;
+  subject: string;
+  text: string;
+}
+
 interface BootstrapAuth {
   kind: 'bootstrap';
 }
@@ -809,7 +819,9 @@ async function handlePublicChat(ctx: RouteContext, site: Site): Promise<void> {
   });
 
   if (createdLead) await dispatchLeadWebhook(ctx, site, createdLead);
+  if (createdLead) await dispatchLeadEmail(ctx, site, createdLead);
   if (createdSupportTicket) await dispatchSupportWebhook(ctx, site, createdSupportTicket);
+  if (createdSupportTicket) await dispatchSupportEmail(ctx, site, createdSupportTicket);
 
   const response: PublicChatResponse = {
     conversationId: conversation.id,
@@ -877,6 +889,7 @@ async function handlePublicLead(ctx: RouteContext, site: Site): Promise<void> {
   });
 
   await dispatchLeadWebhook(ctx, site, lead);
+  await dispatchLeadEmail(ctx, site, lead);
 
   const response: PublicLeadResponse = { leadId: lead.id, status: lead.status };
   sendJson(ctx.res, 201, response);
@@ -969,6 +982,34 @@ async function dispatchSupportWebhook(ctx: RouteContext, site: Site, ticket: Sup
   });
 }
 
+async function dispatchLeadEmail(ctx: RouteContext, site: Site, lead: Lead): Promise<void> {
+  const to = site.config.contact.email;
+  if (!to || ctx.config.emailProvider.id === 'none') return;
+  await deliverEmail(ctx, {
+    siteId: site.id,
+    conversationId: lead.conversationId,
+    action: 'lead_email_delivery',
+    to,
+    locale: lead.locale,
+    subject: `[${site.name}] New chatbot lead`,
+    text: leadEmailText(site, lead),
+  });
+}
+
+async function dispatchSupportEmail(ctx: RouteContext, site: Site, ticket: SupportTicket): Promise<void> {
+  const to = site.config.contact.email;
+  if (!to || ctx.config.emailProvider.id === 'none') return;
+  await deliverEmail(ctx, {
+    siteId: site.id,
+    conversationId: ticket.conversationId,
+    action: 'support_ticket_email_delivery',
+    to,
+    locale: site.config.defaultLocale,
+    subject: `[${site.name}] Human handoff requested`,
+    text: supportEmailText(site, ticket),
+  });
+}
+
 async function deliverWebhook(ctx: RouteContext, input: WebhookDeliveryInput): Promise<void> {
   const startedAt = Date.now();
   const controller = new AbortController();
@@ -1021,6 +1062,117 @@ async function deliverWebhook(ctx: RouteContext, input: WebhookDeliveryInput): P
     );
     data.usageEvents.push(newUsageEvent(input.siteId, 'action', 1));
   });
+}
+
+async function deliverEmail(ctx: RouteContext, input: EmailDeliveryInput): Promise<void> {
+  if (ctx.config.emailProvider.id === 'none') return;
+  const startedAt = Date.now();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ctx.config.integrationTimeoutMs);
+  let status: ActionStatus = 'completed';
+  let reason: string | null = null;
+  let responseStatus: number | null = null;
+  let messageId: string | null = null;
+  const provider = ctx.config.emailProvider.id;
+
+  try {
+    const result = await ctx.config.emailProvider.send({
+      to: input.to,
+      subject: input.subject,
+      text: input.text,
+    }, {
+      signal: controller.signal,
+    });
+    responseStatus = result.responseStatus;
+    messageId = result.messageId;
+  } catch (error) {
+    status = 'failed';
+    reason = error instanceof Error ? error.message.slice(0, 500) : 'Email request failed';
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  await ctx.store.update((data) => {
+    findSite(data, input.siteId);
+    data.actionLogs.push(
+      newActionLog({
+        siteId: input.siteId,
+        conversationId: input.conversationId,
+        action: input.action,
+        status,
+        confidence: 'system',
+        locale: input.locale,
+        sourceText: null,
+        reply: null,
+        reason,
+        metadata: {
+          provider,
+          recipientDomain: recipientDomain(input.to),
+          responseStatus,
+          messageId,
+          durationMs: Date.now() - startedAt,
+        },
+      }),
+    );
+    data.usageEvents.push(newUsageEvent(input.siteId, 'action', 1));
+  });
+}
+
+function leadEmailText(site: Site, lead: Lead): string {
+  return truncateEmailText(
+    [
+      'New chatbot lead',
+      '',
+      `Site: ${site.name} (${site.id})`,
+      `Lead ID: ${lead.id}`,
+      `Conversation ID: ${lead.conversationId ?? 'n/a'}`,
+      `Name: ${lead.name ?? 'n/a'}`,
+      `Company: ${lead.company ?? 'n/a'}`,
+      `Email: ${lead.email ?? 'n/a'}`,
+      `Phone: ${lead.phone ?? 'n/a'}`,
+      `Locale: ${lead.locale}`,
+      `Page: ${lead.pageUrl ?? 'n/a'}`,
+      `Consent captured: ${lead.consentAt ? 'yes' : 'no'}`,
+      `Created: ${lead.createdAt}`,
+      '',
+      'Message:',
+      lead.message,
+    ].join('\n'),
+  );
+}
+
+function supportEmailText(site: Site, ticket: SupportTicket): string {
+  return truncateEmailText(
+    [
+      'New support handoff',
+      '',
+      `Site: ${site.name} (${site.id})`,
+      `Ticket ID: ${ticket.id}`,
+      `Conversation ID: ${ticket.conversationId ?? 'n/a'}`,
+      `Customer email: ${ticket.customerEmail ?? 'n/a'}`,
+      `Customer phone: ${ticket.customerPhone ?? 'n/a'}`,
+      `Reason: ${ticket.reason}`,
+      `Created: ${ticket.createdAt}`,
+      '',
+      'Source message:',
+      ticket.sourceText,
+      '',
+      'Transcript:',
+      ticket.transcript,
+    ].join('\n'),
+  );
+}
+
+function truncateEmailText(value: string): string {
+  const limit = 12_000;
+  if (value.length <= limit) return value;
+  return `${value.slice(0, limit)}\n\n[truncated]`;
+}
+
+function recipientDomain(email: string): string | null {
+  const atIndex = email.lastIndexOf('@');
+  if (atIndex <= 0 || atIndex === email.length - 1) return null;
+  return email.slice(atIndex + 1).toLowerCase();
 }
 
 function publicSiteConfig(site: Site): PublicSiteConfigResponse {

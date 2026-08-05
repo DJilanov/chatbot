@@ -70,6 +70,18 @@ Authorization: Bearer change-me
 
 Set `ADMIN_TOKEN` in `.env` for real environments.
 
+## Email Notifications
+
+Lead and support-ticket email notifications are disabled by default. To enable Resend delivery, configure the API environment and set each site's contact email in the admin console:
+
+```bash
+EMAIL_PROVIDER=resend
+EMAIL_PROVIDER_API_KEY=re_xxx
+EMAIL_FROM="Assistant <notify@example.com>"
+```
+
+Delivery success or failure is recorded in the action audit. Visitor requests are not failed when an email provider is unavailable.
+
 ## Widget Install
 
 After building `packages/widget`, host `packages/widget/dist/widget.js` on your CDN or app domain:
@@ -85,6 +97,6 @@ After building `packages/widget`, host `packages/widget/dist/widget.js` on your 
 
 ## Implementation Status
 
-This is an MVP foundation. It implements the Lead Assistant path first: site config, scoped admin users and roles, knowledge answers, conversations, lead capture, lead status workflow, CSV lead export, handoff tickets, webhook delivery hooks, plan limits, billing summaries, privacy export/erasure/retention controls, analytics, action audit, assistant evals, and embeddable widget.
+This is an MVP foundation. It implements the Lead Assistant path first: site config, scoped admin users and roles, knowledge answers, conversations, lead capture, lead status workflow, CSV lead export, handoff tickets, webhook and email delivery hooks, plan limits, billing summaries, privacy export/erasure/retention controls, analytics, action audit, assistant evals, and embeddable widget.
 
-Commerce adapters, payment-provider billing, password/session auth, automated retention scheduling, mail-provider notifications, and advanced CRM/helpdesk integrations remain roadmap items in `Plan.md`.
+Commerce adapters, payment-provider billing, password/session auth, automated retention scheduling, richer notification templates, and advanced CRM/helpdesk integrations remain roadmap items in `Plan.md`.
