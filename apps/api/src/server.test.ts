@@ -7,7 +7,9 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { createAiProvider } from '@chatbot/ai';
 import type {
+  ActionLog,
   Lead,
+  MissingAnswerItem,
   Organization,
   OrganizationUserCreateResponse,
   PrivacyEraseResponse,
@@ -188,6 +190,61 @@ test('admin can update support ticket status', async () => {
     assert.equal(updateResponse.status, 200);
     const updated = await json<SupportTicket>(updateResponse);
     assert.equal(updated.status, 'waiting_staff');
+  } finally {
+    await api.close();
+  }
+});
+
+test('admin can review missing answers from fallback chats', async () => {
+  const api = await createTestApi();
+  try {
+    const chatResponse = await fetch(`${api.url}/public/sites/site_test/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: 'Как поддържате фотонен принтер без договор?',
+        locale: 'bg',
+        pageUrl: 'https://example.com/services',
+        referrer: 'https://google.example/search',
+      }),
+    });
+    assert.equal(chatResponse.status, 200);
+    const chat = await json<Record<string, unknown>>(chatResponse);
+    assert.equal(chat['intent'], 'fallback');
+    assert.equal(typeof chat['actionId'], 'string');
+
+    const queueResponse = await fetch(`${api.url}/admin/sites/site_test/missing-answers`, {
+      headers: { Authorization: 'Bearer test-token' },
+    });
+    assert.equal(queueResponse.status, 200);
+    const queue = await json<MissingAnswerItem[]>(queueResponse);
+    assert.equal(queue.length, 1);
+    assert.equal(queue[0]?.id, chat['actionId']);
+    assert.equal(queue[0]?.trigger, 'fallback');
+    assert.equal(queue[0]?.locale, 'bg');
+    assert.equal(queue[0]?.question, 'Как поддържате фотонен принтер без договор?');
+    assert.equal(queue[0]?.pageUrl, 'https://example.com/services');
+
+    const reviewResponse = await fetch(`${api.url}/admin/sites/site_test/actions/${String(chat['actionId'])}/review`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: 'Bearer test-token',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ resolutionNote: 'Added to onboarding review list' }),
+    });
+    assert.equal(reviewResponse.status, 200);
+    const reviewed = await json<ActionLog>(reviewResponse);
+    assert.equal(reviewed.reviewedBy, 'bootstrap');
+    assert.equal(reviewed.resolutionNote, 'Added to onboarding review list');
+    assert.equal(typeof reviewed.reviewedAt, 'string');
+
+    const reviewedQueueResponse = await fetch(`${api.url}/admin/sites/site_test/missing-answers`, {
+      headers: { Authorization: 'Bearer test-token' },
+    });
+    assert.equal(reviewedQueueResponse.status, 200);
+    const reviewedQueue = await json<MissingAnswerItem[]>(reviewedQueueResponse);
+    assert.equal(reviewedQueue.length, 0);
   } finally {
     await api.close();
   }

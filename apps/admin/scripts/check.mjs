@@ -15,6 +15,11 @@ for (const text of [
   'erasePrivacySubject',
   'runRetentionCleanup',
   'addKnowledge',
+  'renderMissingAnswers',
+  'draftKnowledgeFromMissingAnswer',
+  'reviewMissingAnswer',
+  '/missing-answers',
+  '/actions/',
   'updateLeadStatus',
   'updateSupportTicketStatus',
   'exportLeads',
@@ -28,7 +33,7 @@ for (const text of [
 }
 
 const html = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
-for (const text of ['Access token', 'identity-summary', 'sign-out-button']) {
+for (const text of ['Access token', 'identity-summary', 'sign-out-button', 'Missing answers', 'missing-answer-list']) {
   if (!html.includes(text)) throw new Error(`Missing admin markup: ${text}`);
 }
 

@@ -24,6 +24,7 @@ import {
   type Lead,
   type LeadStatus,
   type LocaleCode,
+  type MissingAnswerItem,
   type Organization,
   type OrganizationRole,
   type OrganizationUser,
@@ -345,10 +346,22 @@ async function handleAdminRoute(ctx: RouteContext, parts: string[], auth: AdminA
     return;
   }
 
+  if (ctx.req.method === 'GET' && parts[3] === 'missing-answers' && parts.length === 4) {
+    const data = await ctx.store.read();
+    requireSiteRole(data, auth, siteId, 'viewer');
+    sendJson(ctx.res, 200, missingAnswerQueue(data, siteId));
+    return;
+  }
+
   if (ctx.req.method === 'GET' && parts[3] === 'actions' && parts.length === 4) {
     const data = await ctx.store.read();
     requireSiteRole(data, auth, siteId, 'viewer');
     sendJson(ctx.res, 200, data.actionLogs.filter((item) => item.siteId === siteId));
+    return;
+  }
+
+  if (ctx.req.method === 'PATCH' && parts[3] === 'actions' && parts[4] && parts[5] === 'review' && parts.length === 6) {
+    await handleAdminReviewAction(ctx, siteId, parts[4], auth);
     return;
   }
 
@@ -748,6 +761,31 @@ async function handleAdminUpdateSupportTicket(
       }),
     );
     data.usageEvents.push(newUsageEvent(siteId, 'action', 1));
+  });
+  sendJson(ctx.res, 200, updated);
+}
+
+async function handleAdminReviewAction(
+  ctx: RouteContext,
+  siteId: string,
+  actionId: string,
+  auth: AdminAuth,
+): Promise<void> {
+  const body = asRecord(await readJson(ctx.req));
+  const status = hasOwn(body, 'status') ? normalizeActionStatus(body['status']) : null;
+  const resolutionNote = optionalText(body['resolutionNote'], 1000);
+  let updated!: ActionLog;
+  await ctx.store.update((data) => {
+    requireSiteRole(data, auth, siteId, 'support');
+    const action = data.actionLogs.find((item) => item.siteId === siteId && item.id === actionId);
+    if (!action) throw new HttpError(404, 'action_not_found', 'Action log entry not found');
+    const reviewedAt = nowIso();
+    if (status) action.status = status;
+    action.reviewedAt = reviewedAt;
+    action.reviewedBy = auth.kind === 'user' ? auth.user.id : 'bootstrap';
+    action.resolutionNote = resolutionNote;
+    action.updatedAt = reviewedAt;
+    updated = action;
   });
   sendJson(ctx.res, 200, updated);
 }
@@ -1512,6 +1550,47 @@ function csvCell(value: string | null): string {
   const text = value ?? '';
   const safeText = /^[=+\-@]/.test(text) ? `'${text}` : text;
   return `"${safeText.replace(/"/g, '""')}"`;
+}
+
+function missingAnswerQueue(data: AppData, siteId: string): MissingAnswerItem[] {
+  const conversations = new Map(
+    data.conversations.filter((conversation) => conversation.siteId === siteId).map((conversation) => [conversation.id, conversation]),
+  );
+  return data.actionLogs
+    .filter((action) => action.siteId === siteId && !action.reviewedAt)
+    .map((action) => ({ action, trigger: missingAnswerTrigger(action) }))
+    .filter((item): item is { action: ActionLog; trigger: MissingAnswerItem['trigger'] } => item.trigger !== null)
+    .sort((a, b) => b.action.createdAt.localeCompare(a.action.createdAt))
+    .map(({ action, trigger }) => {
+      const conversation = action.conversationId ? conversations.get(action.conversationId) ?? null : null;
+      return {
+        id: action.id,
+        siteId: action.siteId,
+        conversationId: action.conversationId,
+        action: action.action,
+        trigger,
+        status: action.status,
+        confidence: action.confidence,
+        locale: action.locale,
+        question: action.sourceText ?? '',
+        assistantReply: action.reply,
+        reason: action.reason,
+        pageUrl: conversation?.pageUrl ?? null,
+        referrer: conversation?.referrer ?? null,
+        reviewedAt: action.reviewedAt,
+        reviewedBy: action.reviewedBy,
+        resolutionNote: action.resolutionNote,
+        createdAt: action.createdAt,
+        updatedAt: action.updatedAt,
+      };
+    });
+}
+
+function missingAnswerTrigger(action: ActionLog): MissingAnswerItem['trigger'] | null {
+  if (action.action === 'fallback_answer') return 'fallback';
+  if (action.action === 'feedback' && action.metadata['rating'] === 'negative') return 'negative_feedback';
+  if ((action.status === 'failed' || action.status === 'blocked') && action.sourceText) return 'failed_action';
+  return null;
 }
 
 function siteDataExport(data: AppData, siteId: string): SiteDataExport {

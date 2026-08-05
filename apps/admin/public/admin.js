@@ -12,6 +12,7 @@ const state = {
   organizations: [],
   sites: [],
   billingPlans: [],
+  missingAnswers: [],
   selectedSiteId: localStorage.getItem('admin:selectedSiteId') || '',
 };
 
@@ -97,6 +98,7 @@ function clearWorkspace() {
   state.organizations = [];
   state.sites = [];
   state.billingPlans = [];
+  state.missingAnswers = [];
   state.selectedSiteId = '';
   localStorage.removeItem('admin:selectedSiteId');
   renderIdentity();
@@ -105,6 +107,8 @@ function clearWorkspace() {
   qs('#site-list').innerHTML = '';
   qs('#knowledge-count').textContent = '0 entries';
   qs('#knowledge-list').innerHTML = '';
+  qs('#missing-answer-count').textContent = '0 open';
+  qs('#missing-answer-list').innerHTML = '';
   qs('#user-count').textContent = '0 users';
   qs('#user-list').innerHTML = '';
   qs('#created-token').hidden = true;
@@ -158,8 +162,9 @@ async function loadSelectedSite() {
   if (!state.selectedSiteId) return;
   const site = await api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}`);
   fillConfig(site);
-  const [knowledge, analytics, billing, users, leads, actions, supportTickets] = await Promise.all([
+  const [knowledge, missingAnswers, analytics, billing, users, leads, actions, supportTickets] = await Promise.all([
     api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/knowledge`),
+    api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/missing-answers`),
     api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/analytics?days=30`),
     optionalApi(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/billing`),
     optionalApi(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/users`),
@@ -167,7 +172,9 @@ async function loadSelectedSite() {
     api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/actions`),
     api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/support-tickets`),
   ]);
+  state.missingAnswers = missingAnswers;
   renderKnowledge(knowledge);
+  renderMissingAnswers(missingAnswers);
   renderAnalytics(analytics);
   renderBilling(billing);
   renderUsers(users);
@@ -212,6 +219,43 @@ function renderKnowledge(entries) {
       `,
     )
     .join('');
+}
+
+function renderMissingAnswers(items) {
+  state.missingAnswers = items;
+  qs('#missing-answer-count').textContent = `${items.length} open`;
+  const list = qs('#missing-answer-list');
+  list.innerHTML =
+    items
+      .slice(0, 10)
+      .map(
+        (item) => `
+          <article class="record">
+            <div class="record-heading">
+              <strong>${escapeHtml(item.question || item.action)}</strong>
+              <span class="pill">${escapeHtml(item.trigger.replace(/_/g, ' '))} | ${escapeHtml(item.locale)}</span>
+            </div>
+            <p>${escapeHtml(item.assistantReply || 'No assistant reply recorded.')}</p>
+            <p>${escapeHtml(missingAnswerMeta(item))}</p>
+            <div class="record-actions">
+              <button type="button" data-draft-missing-answer="${escapeHtml(item.id)}">Draft knowledge</button>
+              <input data-review-note="${escapeHtml(item.id)}" placeholder="Resolution note" />
+              <button class="secondary-button" type="button" data-review-missing-answer="${escapeHtml(item.id)}">Mark reviewed</button>
+            </div>
+          </article>
+        `,
+      )
+      .join('') || '<p>No missing answers to review.</p>';
+  list.querySelectorAll('button[data-draft-missing-answer]').forEach((button) => {
+    button.addEventListener('click', () => draftKnowledgeFromMissingAnswer(button.dataset.draftMissingAnswer));
+  });
+  list.querySelectorAll('button[data-review-missing-answer]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const actionId = button.dataset.reviewMissingAnswer;
+      const note = qs(`[data-review-note="${cssEscape(actionId)}"]`);
+      void reviewMissingAnswer(actionId, note?.value || '').catch((error) => setStatus(error.message, 'error'));
+    });
+  });
 }
 
 function renderAnalytics(summary) {
@@ -502,6 +546,30 @@ async function addKnowledge(event) {
   setStatus('Knowledge entry added.', 'ok');
 }
 
+function draftKnowledgeFromMissingAnswer(actionId) {
+  const item = state.missingAnswers.find((missingAnswer) => missingAnswer.id === actionId);
+  if (!item) return;
+  const form = qs('#knowledge-form');
+  const title = item.question.trim().slice(0, 120) || `Missing answer ${item.id}`;
+  form.elements.title.value = title;
+  form.elements.intent.value = guessKnowledgeIntent(item.question);
+  form.elements.keywords.value = draftKeywords(item.question).join(', ');
+  form.elements.answerEn.value = '';
+  form.elements.answerBg.value = '';
+  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setStatus('Knowledge draft prepared. Add the approved answer before saving.', 'ok');
+}
+
+async function reviewMissingAnswer(actionId, resolutionNote) {
+  if (!state.selectedSiteId || !actionId) return;
+  await api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/actions/${encodeURIComponent(actionId)}/review`, {
+    method: 'PATCH',
+    body: JSON.stringify({ resolutionNote }),
+  });
+  await loadSelectedSite();
+  setStatus('Missing answer marked reviewed.', 'ok');
+}
+
 async function updateUser(userId, role, disabled) {
   if (!state.selectedSiteId || !userId) return;
   await api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/users/${encodeURIComponent(userId)}`, {
@@ -612,6 +680,66 @@ function supportStatusOptions(selected) {
 
 function roleOptions(selected) {
   return ['owner', 'admin', 'support', 'viewer'].map((role) => optionHtml(role, selected)).join('');
+}
+
+function missingAnswerMeta(item) {
+  const parts = [
+    `${item.status} / ${item.confidence}`,
+    item.reason,
+    item.pageUrl,
+    new Date(item.createdAt).toLocaleString(),
+  ];
+  return parts.filter(Boolean).join(' | ');
+}
+
+function guessKnowledgeIntent(text) {
+  const normalized = String(text || '').toLowerCase();
+  if (/(цена|цени|колко струва|price|pricing|cost|quote)/i.test(normalized)) return 'pricing';
+  if (/(доставка|куриер|delivery|shipping)/i.test(normalized)) return 'delivery_policy';
+  if (/(връщане|return|refund|replace)/i.test(normalized)) return 'returns_policy';
+  if (/(гаранц|warranty|guarantee)/i.test(normalized)) return 'warranty_policy';
+  if (/(плащане|payment|card|cash|банков)/i.test(normalized)) return 'payment_policy';
+  if (/(фактура|invoice|proforma|проформа)/i.test(normalized)) return 'invoice_policy';
+  if (/(поддръжка|support|help|person|човек)/i.test(normalized)) return 'support';
+  if (/(услуга|service|offer|предлаг)/i.test(normalized)) return 'services';
+  return 'custom';
+}
+
+function draftKeywords(text) {
+  const stopWords = new Set([
+    'and',
+    'the',
+    'for',
+    'with',
+    'what',
+    'how',
+    'can',
+    'this',
+    'that',
+    'как',
+    'какво',
+    'кога',
+    'къде',
+    'дали',
+    'може',
+    'имате',
+    'това',
+    'този',
+    'тази',
+    'съм',
+    'сте',
+  ]);
+  return [
+    ...new Set(
+      String(text || '')
+        .toLowerCase()
+        .normalize('NFKC')
+        .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
+        .split(/\s+/)
+        .filter((word) => word.length >= 3 && !stopWords.has(word))
+        .slice(0, 8),
+    ),
+  ];
 }
 
 function optionHtml(value, selected) {

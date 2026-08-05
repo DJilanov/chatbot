@@ -1076,6 +1076,7 @@ Implemented in the repo:
 - Email provider support for Resend and SMTP so production can use the same SMTP-style mail operation as the EU contact project.
 - Deterministic local AI provider plus OpenAI/Gemini provider boundaries.
 - Regression tests for chat guardrails, file persistence, lead operations, support operations, lead webhook delivery, and email notification delivery.
+- Missing-answer queue in admin, derived from fallback chats, negative feedback, failed actions, and blocked actions, with review notes and knowledge-draft preparation.
 
 Still required before a serious paid launch:
 
@@ -1142,7 +1143,7 @@ Must build next:
 - Bulgarian-first admin UX, not only Bulgarian visitor widget copy.
 - Knowledge importer from website URLs, PDFs, DOCX, CSV, pasted FAQ, and product policy pages.
 - Human approval workflow for imported/translated knowledge.
-- Missing-answer queue generated from failed or low-confidence conversations.
+- Missing-answer analytics and weekly summaries generated from failed or low-confidence conversations.
 - Product feed ingestion for CSV/JSON first, then WooCommerce, OpenCart, Shopify, CloudCart, and Jilanov ecommerce.
 - Product cards with image, price, stock, URL, key specs, recommendation reason, and compare action.
 - Safe ecommerce actions: cart handoff, checkout handoff, order-status routing, return/warranty/invoice routing, and staff fallback when system data is missing.
@@ -1219,7 +1220,7 @@ Copy principles:
 
 3. Build product advantages:
    - Website/PDF knowledge import.
-   - Missing-answer queue.
+   - Missing-answer queue. Completed in the current admin/API slice.
    - Product feed ingestion and product cards.
    - CRM/calendar integration.
    - Viber/Messenger roadmap.
@@ -1237,9 +1238,8 @@ Copy principles:
 
 ## Immediate Next Steps
 
-1. Configure production email for `chatbot.jilanov.com` with `EMAIL_PROVIDER=smtp` plus the same SMTP settings used by the EU contact flow, or with Resend if that sender domain is ready.
-2. Capture real product screenshots from the deployed widget, admin lead inbox, action audit, and owner email notification.
-3. Start 3 pilot installs: one ecommerce store, one service business, and one B2B website.
-4. Build website/PDF knowledge import and the missing-answer queue before adding heavier ecommerce integrations.
-5. Build CSV/JSON product feed ingestion and product cards, then prioritize WooCommerce, OpenCart, Shopify, CloudCart, and Jilanov ecommerce adapters based on pilot demand.
-6. Add CRM/calendar integrations and then Viber/Messenger channels after the website assistant has measurable pilot results.
+1. Capture real product screenshots from the deployed widget, admin lead inbox, missing-answer queue, action audit, and owner email notification.
+2. Start 3 pilot installs: one ecommerce store, one service business, and one B2B website.
+3. Build website/PDF knowledge import before adding heavier ecommerce integrations.
+4. Build CSV/JSON product feed ingestion and product cards, then prioritize WooCommerce, OpenCart, Shopify, CloudCart, and Jilanov ecommerce adapters based on pilot demand.
+5. Add CRM/calendar integrations and then Viber/Messenger channels after the website assistant has measurable pilot results.

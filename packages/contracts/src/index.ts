@@ -360,6 +360,34 @@ export interface ActionLog {
   updatedAt: string;
 }
 
+export type MissingAnswerTrigger = 'fallback' | 'negative_feedback' | 'failed_action';
+
+export interface MissingAnswerItem {
+  id: string;
+  siteId: string;
+  conversationId: string | null;
+  action: string;
+  trigger: MissingAnswerTrigger;
+  status: ActionStatus;
+  confidence: ActionConfidence;
+  locale: LocaleCode;
+  question: string;
+  assistantReply: string | null;
+  reason: string | null;
+  pageUrl: string | null;
+  referrer: string | null;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  resolutionNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ActionReviewRequest {
+  status?: ActionStatus;
+  resolutionNote?: string;
+}
+
 export interface UsageEvent {
   id: string;
   siteId: string;

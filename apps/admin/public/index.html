@@ -142,7 +142,7 @@
             </label>
             <label class="wide">
               English answer
-              <textarea name="answerEn" required></textarea>
+              <textarea name="answerEn"></textarea>
             </label>
             <label class="wide">
               Bulgarian answer
@@ -151,6 +151,14 @@
             <button class="wide" type="submit">Add knowledge</button>
           </form>
           <div id="knowledge-list" class="record-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <h2>Missing answers</h2>
+            <span id="missing-answer-count" class="pill">0 open</span>
+          </div>
+          <div id="missing-answer-list" class="record-list"></div>
         </section>
 
         <section class="metrics">
