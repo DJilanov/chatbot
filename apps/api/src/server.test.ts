@@ -24,6 +24,7 @@ import { createApiServer } from './server.js';
 import { FileStore } from './store.js';
 import type { ApiConfig } from './config.js';
 import { NullEmailProvider, ResendEmailProvider, type EmailProvider } from './email.js';
+import { createKnowledgeImportDraft, isPrivateAddress, normalizeKnowledgeImportUrl } from './knowledge-import.js';
 
 interface TestApi {
   url: string;
@@ -113,6 +114,66 @@ test('public site config localizes browser-facing copy', async () => {
     const enBranding = enConfig['branding'] as Record<string, unknown>;
     assert.equal(enBranding['assistantName'], 'Assistant');
     assert.match(String(enConfig['welcomeMessage']), /Hi, I am an AI assistant/);
+  } finally {
+    await api.close();
+  }
+});
+
+test('knowledge URL import creates a human-reviewed draft from page content', () => {
+  const sourceUrl = normalizeKnowledgeImportUrl('https://example.com/faq#delivery');
+  const draft = createKnowledgeImportDraft(
+    sourceUrl,
+    `
+      <!doctype html>
+      <html>
+        <head><title>Доставка и гаранция</title><style>.hidden { display:none; }</style></head>
+        <body>
+          <nav>Navigation should be ignored</nav>
+          <main>
+            <h1>Доставка за онлайн магазина</h1>
+            <p>Безплатна доставка за поръчки над 100 лв. Клиентите получават SMS от куриера.</p>
+            <p>Гаранционните заявки се обработват от екипа в рамките на два работни дни.</p>
+          </main>
+          <script>window.secret = true;</script>
+        </body>
+      </html>
+    `,
+    'bg',
+    'delivery_policy',
+    null,
+  );
+
+  assert.equal(draft.sourceUrl, 'https://example.com/faq');
+  assert.equal(draft.title, 'Доставка и гаранция');
+  assert.equal(draft.locale, 'bg');
+  assert.equal(draft.intent, 'delivery_policy');
+  assert.match(draft.answer.bg ?? '', /Безплатна доставка/);
+  assert.doesNotMatch(draft.answer.bg ?? '', /secret|Navigation/);
+  assert.ok(draft.keywords.includes('доставка'));
+});
+
+test('knowledge URL import blocks private network targets', async () => {
+  assert.equal(isPrivateAddress('127.0.0.1'), true);
+  assert.equal(isPrivateAddress('192.168.1.20'), true);
+  assert.equal(isPrivateAddress('8.8.8.8'), false);
+
+  const api = await createTestApi();
+  try {
+    const response = await fetch(`${api.url}/admin/sites/site_test/knowledge/import-url`, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer test-token',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        url: 'http://127.0.0.1/private',
+        locale: 'bg',
+        intent: 'custom',
+      }),
+    });
+    assert.equal(response.status, 400);
+    const body = await json<Record<string, unknown>>(response);
+    assert.equal(body['code'], 'import_private_host');
   } finally {
     await api.close();
   }

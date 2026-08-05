@@ -193,6 +193,7 @@ async function optionalApi(path) {
 
 function fillConfig(site) {
   const form = qs('#config-form');
+  const importForm = qs('#knowledge-import-form');
   form.elements.title.value = site.config.branding.title || '';
   form.elements.subtitle.value = site.config.branding.subtitle || '';
   form.elements.assistantName.value = site.config.branding.assistantName || '';
@@ -204,6 +205,7 @@ function fillConfig(site) {
   form.elements.welcomeMessage.value = site.config.welcomeMessage || '';
   form.elements.fallbackMessage.value = site.config.fallbackMessage || '';
   form.elements.leadCapturePrompt.value = site.config.leadCapturePrompt || '';
+  if (importForm) importForm.elements.locale.value = site.config.defaultLocale === 'en' ? 'en' : 'bg';
 }
 
 function renderKnowledge(entries) {
@@ -546,18 +548,43 @@ async function addKnowledge(event) {
   setStatus('Knowledge entry added.', 'ok');
 }
 
+async function importKnowledgeUrl(event) {
+  event.preventDefault();
+  if (!state.selectedSiteId) return;
+  const values = formRecord(event.currentTarget);
+  const draft = await api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/knowledge/import-url`, {
+    method: 'POST',
+    body: JSON.stringify({
+      url: values.url,
+      locale: values.locale,
+      intent: values.intent,
+    }),
+  });
+  applyKnowledgeDraft(draft);
+  setStatus(`Knowledge draft imported from ${draft.sourceUrl}. Review it before saving.`, 'ok');
+}
+
 function draftKnowledgeFromMissingAnswer(actionId) {
   const item = state.missingAnswers.find((missingAnswer) => missingAnswer.id === actionId);
   if (!item) return;
-  const form = qs('#knowledge-form');
-  const title = item.question.trim().slice(0, 120) || `Missing answer ${item.id}`;
-  form.elements.title.value = title;
-  form.elements.intent.value = guessKnowledgeIntent(item.question);
-  form.elements.keywords.value = draftKeywords(item.question).join(', ');
-  form.elements.answerEn.value = '';
-  form.elements.answerBg.value = '';
-  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const draft = {
+    title: item.question.trim().slice(0, 120) || `Missing answer ${item.id}`,
+    intent: guessKnowledgeIntent(item.question),
+    keywords: draftKeywords(item.question),
+    answer: {},
+  };
+  applyKnowledgeDraft(draft);
   setStatus('Knowledge draft prepared. Add the approved answer before saving.', 'ok');
+}
+
+function applyKnowledgeDraft(draft) {
+  const form = qs('#knowledge-form');
+  form.elements.title.value = draft.title || '';
+  form.elements.intent.value = draft.intent || 'custom';
+  form.elements.keywords.value = Array.isArray(draft.keywords) ? draft.keywords.join(', ') : '';
+  form.elements.answerEn.value = draft.answer?.en || '';
+  form.elements.answerBg.value = draft.answer?.bg || '';
+  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function reviewMissingAnswer(actionId, resolutionNote) {
@@ -842,6 +869,9 @@ qs('#privacy-erase-form').addEventListener('submit', (event) => {
 });
 qs('#knowledge-form').addEventListener('submit', (event) => {
   void addKnowledge(event).catch((error) => setStatus(error.message, 'error'));
+});
+qs('#knowledge-import-form').addEventListener('submit', (event) => {
+  void importKnowledgeUrl(event).catch((error) => setStatus(error.message, 'error'));
 });
 qs('#refresh-button').addEventListener('click', () => {
   void loadAll().catch((error) => setStatus(error.message, 'error'));

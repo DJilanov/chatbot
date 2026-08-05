@@ -51,6 +51,7 @@ import { resolveChat, extractContactDetails } from './chat-engine.js';
 import { loadConfig, type ApiConfig } from './config.js';
 import { defaultSiteConfig } from './defaults.js';
 import { createId, nowIso } from './ids.js';
+import { importKnowledgeFromUrl, KnowledgeImportFailure } from './knowledge-import.js';
 import { localizedSiteConfig } from './localization.js';
 import { FileStore, type AppData } from './store.js';
 
@@ -651,6 +652,11 @@ async function handleAdminKnowledge(ctx: RouteContext, parts: string[], siteId: 
     return;
   }
 
+  if (ctx.req.method === 'POST' && parts[4] === 'import-url' && parts.length === 5) {
+    await handleAdminKnowledgeImportUrl(ctx, siteId, auth);
+    return;
+  }
+
   const entryId = parts[4];
   if (!entryId || parts.length !== 5) {
     throw new HttpError(404, 'not_found', 'Knowledge route not found');
@@ -691,6 +697,34 @@ async function handleAdminKnowledge(ctx: RouteContext, parts: string[], siteId: 
   }
 
   throw new HttpError(404, 'not_found', 'Knowledge route not found');
+}
+
+async function handleAdminKnowledgeImportUrl(
+  ctx: RouteContext,
+  siteId: string,
+  auth: AdminAuth,
+): Promise<void> {
+  const body = asRecord(await readJson(ctx.req));
+  const data = await ctx.store.read();
+  const site = requireSiteRole(data, auth, siteId, 'admin');
+  const locale = normalizeLocale(body['locale'], site.config.defaultLocale);
+  const intent = normalizeKnowledgeIntent(body['intent']);
+  const title = optionalText(body['title'], 160);
+  try {
+    const draft = await importKnowledgeFromUrl({
+      url: body['url'],
+      locale,
+      intent,
+      title,
+      timeoutMs: Math.min(ctx.config.integrationTimeoutMs, 10_000),
+    });
+    sendJson(ctx.res, 200, draft);
+  } catch (error) {
+    if (error instanceof KnowledgeImportFailure) {
+      throw new HttpError(error.status, error.code, error.message);
+    }
+    throw error;
+  }
 }
 
 async function handleAdminUpdateLead(

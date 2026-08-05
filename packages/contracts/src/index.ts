@@ -290,6 +290,16 @@ export interface KnowledgeRevision {
   entries: KnowledgeEntry[];
 }
 
+export interface KnowledgeImportDraft {
+  sourceUrl: string;
+  title: string;
+  locale: LocaleCode;
+  intent: KnowledgeIntent;
+  keywords: string[];
+  answer: LocalizedText;
+  characterCount: number;
+}
+
 export interface ChatMessage {
   id: string;
   conversationId: string;

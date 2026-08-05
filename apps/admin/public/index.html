@@ -118,6 +118,35 @@
             <h2>Knowledge base</h2>
             <span id="knowledge-count" class="pill">0 entries</span>
           </div>
+          <form id="knowledge-import-form" class="grid-form import-form">
+            <label class="wide">
+              Website page URL
+              <input name="url" type="url" placeholder="https://example.com/faq" required />
+            </label>
+            <label>
+              Language
+              <select name="locale">
+                <option value="bg">Bulgarian</option>
+                <option value="en">English</option>
+              </select>
+            </label>
+            <label>
+              Intent
+              <select name="intent">
+                <option value="custom">Custom</option>
+                <option value="company_info">Company info</option>
+                <option value="services">Services</option>
+                <option value="pricing">Pricing</option>
+                <option value="delivery_policy">Delivery policy</option>
+                <option value="returns_policy">Returns policy</option>
+                <option value="warranty_policy">Warranty policy</option>
+                <option value="payment_policy">Payment policy</option>
+                <option value="invoice_policy">Invoice policy</option>
+                <option value="support">Support</option>
+              </select>
+            </label>
+            <button type="submit">Import draft</button>
+          </form>
           <form id="knowledge-form" class="grid-form">
             <label>
               Title
