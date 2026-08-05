@@ -1065,6 +1065,7 @@ Implemented in the repo:
 - Starter, Growth, Commerce, and Managed plan definitions with subscription status and plan-limit enforcement for sites, knowledge entries, monthly conversations, monthly messages, and monthly leads.
 - Privacy operations for site data export, data-subject erasure, and manual retention cleanup using each site's configured retention window.
 - Assistant eval release gate with deterministic cases for knowledge precedence, localized answers, pricing, handoff, lead capture, fallback, disabled knowledge, safe AI fallback, and unsafe operational-claim blocking.
+- GitHub Actions CI that runs type-check, build, tests, and assistant evals on `main` pushes and pull requests.
 - Local landing page with live widget demo and lead form.
 - Deterministic local AI provider plus OpenAI/Gemini provider boundaries.
 - Regression tests for chat guardrails, file persistence, lead operations, support operations, and lead webhook delivery.

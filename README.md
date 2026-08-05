@@ -47,6 +47,19 @@ npm run seed:dev
 
 Then run the API and marketing page. The landing page uses `site_demo` and loads the local widget bundle from `/vendor/widget.js`.
 
+## Verification
+
+Run the same checks as CI:
+
+```bash
+npm run type-check
+npm run build
+npm test
+npm run assistant:eval
+```
+
+GitHub Actions runs these checks on pushes to `main` and on pull requests.
+
 ## Admin API
 
 Admin routes require:
