@@ -1071,6 +1071,7 @@ Implemented in the repo:
 - Local landing page with live widget demo and lead form.
 - Browser-language localization for Bulgarian and English, with Bulgarian as the default target-market language.
 - Jilanov logo branding on the landing page.
+- Bulgarian-market landing section with managed-by-Jilanov positioning and pilot package pricing in BGN.
 - Qualified demo request form with name, email, phone, company, website, platform, goal, timeline, page URL, locale, consent, lead storage, and owner email notification.
 - Email provider support for Resend and SMTP so production can use the same SMTP-style mail operation as the EU contact project.
 - Deterministic local AI provider plus OpenAI/Gemini provider boundaries.
@@ -1238,8 +1239,7 @@ Copy principles:
 
 1. Configure production email for `chatbot.jilanov.com` with `EMAIL_PROVIDER=smtp` plus the same SMTP settings used by the EU contact flow, or with Resend if that sender domain is ready.
 2. Capture real product screenshots from the deployed widget, admin lead inbox, action audit, and owner email notification.
-3. Polish the Bulgarian landing copy around the Jilanov-managed offer and decide whether public prices should be shown as "from" prices or demo-only pilot pricing.
-4. Start 3 pilot installs: one ecommerce store, one service business, and one B2B website.
-5. Build website/PDF knowledge import and the missing-answer queue before adding heavier ecommerce integrations.
-6. Build CSV/JSON product feed ingestion and product cards, then prioritize WooCommerce, OpenCart, Shopify, CloudCart, and Jilanov ecommerce adapters based on pilot demand.
-7. Add CRM/calendar integrations and then Viber/Messenger channels after the website assistant has measurable pilot results.
+3. Start 3 pilot installs: one ecommerce store, one service business, and one B2B website.
+4. Build website/PDF knowledge import and the missing-answer queue before adding heavier ecommerce integrations.
+5. Build CSV/JSON product feed ingestion and product cards, then prioritize WooCommerce, OpenCart, Shopify, CloudCart, and Jilanov ecommerce adapters based on pilot demand.
+6. Add CRM/calendar integrations and then Viber/Messenger channels after the website assistant has measurable pilot results.

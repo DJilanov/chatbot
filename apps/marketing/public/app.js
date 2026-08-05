@@ -360,6 +360,8 @@
           'Админ потребителите управляват одобрени знания без промени по кода.',
         'AI lead assistant for websites and ecommerce stores':
           'AI асистент за лийдове за сайтове и онлайн магазини',
+        'AI assistant for Bulgarian websites and ecommerce stores':
+          'AI асистент за български сайтове и онлайн магазини',
         'AI sales and support assistant': 'AI асистент за продажби и поддръжка',
         'Answer safely': 'Отговаряйте сигурно',
         'Answered questions': 'Отговорени въпроси',
@@ -367,7 +369,15 @@
         'Assistant SaaS answers from approved business knowledge, captures qualified contacts, routes support handoffs, sends notifications, and records an action audit your team can review.':
           'Assistant SaaS отговаря от одобрени бизнес знания, събира квалифицирани контакти, насочва поддръжката, изпраща известия и записва журнал за преглед от екипа.',
         'Assistant SaaS workspace': 'Работно пространство Assistant SaaS',
+        'Book a demo submissions become qualified leads and send an owner email with page, language, and qualification details.':
+          'Заявките за демо стават квалифицирани лийдове и изпращат email към собственика със страница, език и квалификационни детайли.',
         'Book a demo': 'Запази демо',
+        BG: 'BG',
+        'Bulgarian language quality': 'Качество на български език',
+        'Bulgarian market': 'Български пазар',
+        'Bulgarian companies need fast setup, clear ownership, good local-language answers, and a team that can connect the assistant to the website or online store they already have.':
+          'Българските компании имат нужда от бързо внедряване, ясна отговорност, добри отговори на местен език и екип, който може да свърже асистента със сайта или онлайн магазина, който вече използват.',
+        'Bulgarian-first, English-ready': 'Първо български, готов и за английски',
         'Built from a production ecommerce assistant':
           'Изграден върху реален ecommerce асистент',
         'Business outcome': 'Бизнес резултат',
@@ -398,6 +408,7 @@
         'Create a site': 'Създаване на сайт',
         'Custom REST API': 'Custom REST API',
         'Demo': 'Демо',
+        'Demo requests delivered by email': 'Заявките за демо пристигат по email',
         'Designed for multilingual websites and EU transparency rules':
           'Проектиран за многоезични сайтове и EU правила за прозрачност',
         'Differentiation': 'Разлика',
@@ -418,6 +429,8 @@
           'FAQ отговори, квалификация на лийдове, събиране на контакти, насочване към среща/демо, email известия, webhooks и аналитика.',
         'Find products by brand, model, SKU, category, price, availability, and attributes':
           'Намира продукти по марка, модел, SKU, категория, цена, наличност и атрибути',
+        'For Bulgaria': 'За България',
+        'for teams that want us to run it': 'за екипи, които искат ние да го управляваме',
         'From blank site to useful assistant in one afternoon':
           'От празен сайт до полезен асистент за един следобед',
         'Generic chatbot': 'Стандартен чатбот',
@@ -437,6 +450,7 @@
         'Is this just ChatGPT embedded on my site?':
           'Това просто ChatGPT, вграден в сайта ми ли е?',
         'Jilanovi ecommerce': 'Jilanovi ecommerce',
+        'Jilanov managed AI assistant': 'Jilanov управляван AI асистент',
         'JSON product feed': 'JSON продуктов фийд',
         'Just researching': 'Само проучвам',
         'Knowledge editor': 'Редактор на знания',
@@ -450,8 +464,12 @@
         'Limited transcript': 'Ограничен transcript',
         'Live demo': 'Демо',
         'Main goal': 'Основна цел',
+        'Made for businesses that want results, not another experiment':
+          'Създаден за бизнеси, които искат резултати, не пореден експеримент',
         'Managed': 'Managed',
         'Managed Assistant': 'Managed Assistant',
+        'Managed implementation': 'Управлявано внедряване',
+        'Managed setup by the Jilanov team': 'Внедряване от екипа на Jilanov',
         'Most teams': 'За повечето екипи',
         'Name': 'Име',
         'Next quarter': 'Следващото тримесечие',
@@ -475,6 +493,8 @@
         'Pricing': 'Цени',
         'Pricing answer plus contact prompt':
           'Отговор за цени плюс покана за контакт',
+        'Pilot prices are shown as starting points. The final offer depends on the site, knowledge volume, traffic, integrations, and whether you want us to manage the assistant.':
+          'Пилотните цени са начални ориентири. Финалната оферта зависи от сайта, обема знания, трафика, интеграциите и дали искате ние да управляваме асистента.',
         'Privacy and AI transparency': 'Поверителност и AI прозрачност',
         'Product': 'Продукт',
         'Product discovery, product cards, comparison, cart and checkout handoff, return/warranty/order support routing.':
@@ -497,6 +517,7 @@
         'Route new opportunities fast': 'Насочва новите възможности бързо',
         'Safety': 'Сигурност',
         'Sales pitch': 'Продажбен аргумент',
+        'Sales follow-up': 'Последваща продажбена работа',
         'See how the assistant would work on your website':
           'Вижте как асистентът би работил на вашия сайт',
         'See why the assistant answered, asked for contact details, created a handoff, or blocked a request.':
@@ -518,6 +539,8 @@
           'Покажете целия цикъл на асистента с един поглед',
         'Start with leads. Upgrade to commerce.':
           'Започнете с лийдове. Надградете към commerce.',
+        'Start with leads, then add product feeds, product cards, comparison, checkout handoff, and support routing.':
+          'Започнете с лийдове, после добавете продуктови фийдове, продуктови карти, сравнение, checkout handoff и насочване към поддръжка.',
         'Starter': 'Starter',
         'Support queue': 'Опашка за поддръжка',
         'The MVP is intentionally simple: configure the assistant, add knowledge, install the widget, then watch conversations and leads arrive in the admin console.':
@@ -538,6 +561,8 @@
           'Продаваемият старт е Lead Assistant. Commerce разширява същия асистент към откриване на продукти, сравнение и предаване към checkout след свързване на магазин.',
         'These are the surfaces that prove the assistant is operational software, not a prompt demo.':
           'Това са повърхностите, които доказват, че асистентът е оперативен софтуер, не prompt demo.',
+        'The visitor experience defaults to Bulgarian and switches to English when the browser asks for it.':
+          'Потребителското изживяване започва на български и превключва към английски, когато браузърът го поиска.',
         'Try live assistant': 'Пробвай асистента',
         'This month': 'Този месец',
         'This week': 'Тази седмица',
@@ -561,6 +586,10 @@
           'Защо това е по-добро от стандартен chatbot plugin',
         'Will it invent prices or order information?':
           'Ще измисля ли цени или информация за поръчки?',
+        'We configure the widget, write the first knowledge base, test the answers, and keep improving it after launch.':
+          'Настройваме уиджета, пишем първата база знания, тестваме отговорите и продължаваме да го подобряваме след старта.',
+        'We install, train, and maintain an AI assistant that answers in Bulgarian, captures demo requests, recommends the next step, emails your team, and keeps an audit trail for every important action.':
+          'Инсталираме, обучаваме и поддържаме AI асистент, който отговаря на български, събира заявки за демо, препоръчва следваща стъпка, изпраща email към екипа и пази журнал за всяко важно действие.',
         'WooCommerce planned': 'WooCommerce планирано',
         'Workflow': 'Работен процес',
         'Write knowledge entries for the questions your team answers every day.':
@@ -568,7 +597,14 @@
         'Yes. Admin users can manage approved knowledge entries without editing code.':
           'Да. Админ потребителите могат да управляват одобрени знания без редакция на код.',
         'email-lead@example.com': 'email-lead@example.com',
+        'custom monthly plan': 'индивидуален месечен план',
         lead_email_delivery: 'lead_email_delivery',
+        'from 99 BGN/month': 'от 99 лв./месец',
+        'from 249 BGN/month': 'от 249 лв./месец',
+        'from 499 BGN/month': 'от 499 лв./месец',
+        'setup from 700 BGN': 'внедряване от 700 лв.',
+        'setup from 1500 BGN': 'внедряване от 1500 лв.',
+        'setup from 2500 BGN': 'внедряване от 2500 лв.',
         site_demo: 'site_demo',
       },
     },

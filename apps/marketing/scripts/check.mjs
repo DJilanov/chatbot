@@ -14,7 +14,15 @@ for (const file of required) {
 }
 
 const html = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
-for (const text of ['Book a demo', 'Commerce Assistant', 'Action audit', 'AI assistant', 'Try live assistant']) {
+for (const text of [
+  'Book a demo',
+  'Commerce Assistant',
+  'Action audit',
+  'AI assistant',
+  'Try live assistant',
+  'For Bulgaria',
+  'from 99 BGN/month',
+]) {
   if (!html.includes(text)) throw new Error(`Missing landing copy: ${text}`);
 }
 for (const text of ['data-locale-option="bg"', 'data-locale-option="en"']) {
@@ -22,7 +30,16 @@ for (const text of ['data-locale-option="bg"', 'data-locale-option="en"']) {
 }
 
 const script = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
-for (const text of ['data-demo-prompt', 'submitDemoForm', '/public/sites/', 'CHATBOT_LOCALE', 'Timeline', 'Асистент']) {
+for (const text of [
+  'data-demo-prompt',
+  'submitDemoForm',
+  '/public/sites/',
+  'CHATBOT_LOCALE',
+  'Timeline',
+  'За България',
+  'от 99 лв./месец',
+  'Асистент',
+]) {
   if (!script.includes(text)) throw new Error(`Missing landing behavior: ${text}`);
 }
 

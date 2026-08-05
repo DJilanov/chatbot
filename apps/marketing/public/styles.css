@@ -501,7 +501,8 @@ h3 {
 
 .feature-grid,
 .pricing-grid,
-.surface-grid {
+.surface-grid,
+.local-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
@@ -515,7 +516,8 @@ h3 {
 .mode-list article,
 .pricing-grid article,
 .faq details,
-.surface-grid article {
+.surface-grid article,
+.local-grid article {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
@@ -523,8 +525,36 @@ h3 {
 }
 
 .feature-card,
-.surface-grid article {
+.surface-grid article,
+.local-grid article {
   padding: 22px;
+}
+
+.local-market {
+  border-bottom: 1px solid var(--line);
+}
+
+.local-grid article {
+  min-height: 240px;
+}
+
+.local-grid span {
+  display: inline-flex;
+  min-width: 38px;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 26px;
+  border-radius: 8px;
+  color: #fff;
+  background: var(--teal);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.local-grid p {
+  color: var(--muted);
+  line-height: 1.58;
 }
 
 .feature-card .icon {
@@ -751,6 +781,24 @@ h3 {
   margin-top: auto;
 }
 
+.pricing-grid small,
+.price-line {
+  display: block;
+}
+
+.price-line {
+  margin-bottom: 2px;
+  color: var(--navy);
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.pricing-grid small {
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
 .plan-label {
   border-radius: 999px;
   padding: 5px 9px;
@@ -875,7 +923,8 @@ h3 {
   .outcome-grid,
   .product-tour,
   .tour-columns,
-  .surface-grid {
+  .surface-grid,
+  .local-grid {
     grid-template-columns: 1fr;
   }
 
