@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Assistant SaaS Admin</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Admin console</p>
+        <h1>Assistant SaaS</h1>
+      </div>
+      <form id="connection-form" class="connection">
+        <label>
+          API URL
+          <input id="api-url" value="http://localhost:8787" />
+        </label>
+        <label>
+          Admin token
+          <input id="admin-token" value="change-me" />
+        </label>
+        <button type="submit">Connect</button>
+      </form>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <section class="panel">
+          <h2>Create organization</h2>
+          <form id="organization-form" class="stack">
+            <input name="name" placeholder="Organization name" required />
+            <button type="submit">Create organization</button>
+          </form>
+        </section>
+
+        <section class="panel">
+          <h2>Create site</h2>
+          <form id="site-form" class="stack">
+            <select name="organizationId" id="organization-select" required></select>
+            <input name="name" placeholder="Site name" required />
+            <input name="websiteUrl" placeholder="https://example.com" />
+            <input name="allowedDomains" placeholder="example.com, www.example.com" />
+            <button type="submit">Create site</button>
+          </form>
+        </section>
+
+        <section class="panel">
+          <h2>Sites</h2>
+          <div id="site-list" class="site-list"></div>
+        </section>
+      </aside>
+
+      <section class="content">
+        <div id="status" class="status">Connect to the API to start.</div>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <h2>Site configuration</h2>
+            <button id="refresh-button" type="button">Refresh</button>
+          </div>
+          <form id="config-form" class="grid-form">
+            <label>
+              Assistant title
+              <input name="title" />
+            </label>
+            <label>
+              Subtitle
+              <input name="subtitle" />
+            </label>
+            <label>
+              Assistant name
+              <input name="assistantName" />
+            </label>
+            <label>
+              Primary color
+              <input name="primaryColor" placeholder="#175cff" />
+            </label>
+            <label>
+              Contact email
+              <input name="email" />
+            </label>
+            <label>
+              Contact phone
+              <input name="phone" />
+            </label>
+            <label>
+              Lead webhook URL
+              <input name="leadWebhookUrl" placeholder="https://hooks.example.com/leads" />
+            </label>
+            <label>
+              Support webhook URL
+              <input name="supportWebhookUrl" placeholder="https://hooks.example.com/support" />
+            </label>
+            <label class="wide">
+              Welcome message
+              <textarea name="welcomeMessage"></textarea>
+            </label>
+            <label class="wide">
+              Fallback message
+              <textarea name="fallbackMessage"></textarea>
+            </label>
+            <label class="wide">
+              Lead capture prompt
+              <textarea name="leadCapturePrompt"></textarea>
+            </label>
+            <button class="wide" type="submit">Save configuration</button>
+          </form>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <h2>Knowledge base</h2>
+            <span id="knowledge-count" class="pill">0 entries</span>
+          </div>
+          <form id="knowledge-form" class="grid-form">
+            <label>
+              Title
+              <input name="title" required />
+            </label>
+            <label>
+              Intent
+              <select name="intent">
+                <option value="company_info">Company info</option>
+                <option value="services">Services</option>
+                <option value="pricing">Pricing</option>
+                <option value="delivery_policy">Delivery policy</option>
+                <option value="returns_policy">Returns policy</option>
+                <option value="warranty_policy">Warranty policy</option>
+                <option value="support">Support</option>
+                <option value="custom">Custom</option>
+              </select>
+            </label>
+            <label class="wide">
+              Keywords
+              <input name="keywords" placeholder="pricing, quote, cost" required />
+            </label>
+            <label class="wide">
+              English answer
+              <textarea name="answerEn" required></textarea>
+            </label>
+            <label class="wide">
+              Bulgarian answer
+              <textarea name="answerBg"></textarea>
+            </label>
+            <button class="wide" type="submit">Add knowledge</button>
+          </form>
+          <div id="knowledge-list" class="record-list"></div>
+        </section>
+
+        <section class="metrics">
+          <article>
+            <span>Conversations</span>
+            <strong id="metric-conversations">0</strong>
+          </article>
+          <article>
+            <span>Messages</span>
+            <strong id="metric-messages">0</strong>
+          </article>
+          <article>
+            <span>Leads</span>
+            <strong id="metric-leads">0</strong>
+          </article>
+          <article>
+            <span>Handoffs</span>
+            <strong id="metric-handoffs">0</strong>
+          </article>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <h2>Billing</h2>
+            <span id="billing-status" class="pill">-</span>
+          </div>
+          <form id="billing-form" class="grid-form">
+            <label>
+              Plan
+              <select name="planId" id="billing-plan-select"></select>
+            </label>
+            <label>
+              Status
+              <select name="status">
+                <option value="trialing">Trialing</option>
+                <option value="active">Active</option>
+                <option value="past_due">Past due</option>
+                <option value="paused">Paused</option>
+                <option value="canceled">Canceled</option>
+              </select>
+            </label>
+            <label>
+              Trial ends at
+              <input name="trialEndsAt" placeholder="2026-08-19T00:00:00.000Z" />
+            </label>
+            <label>
+              Period end
+              <input name="currentPeriodEnd" placeholder="2026-09-01T00:00:00.000Z" />
+            </label>
+            <button class="wide" type="submit">Save billing</button>
+          </form>
+          <div id="billing-usage" class="usage-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <h2>Users</h2>
+            <span id="user-count" class="pill">0 users</span>
+          </div>
+          <form id="user-form" class="grid-form">
+            <label>
+              Name
+              <input name="name" required />
+            </label>
+            <label>
+              Email
+              <input name="email" type="email" required />
+            </label>
+            <label>
+              Role
+              <select name="role">
+                <option value="owner">Owner</option>
+                <option value="admin">Admin</option>
+                <option value="support">Support</option>
+                <option value="viewer">Viewer</option>
+              </select>
+            </label>
+            <button type="submit">Create user</button>
+          </form>
+          <div id="created-token" class="token-output" hidden></div>
+          <div id="user-list" class="record-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <h2>Privacy</h2>
+            <button id="export-data-button" type="button">Export JSON</button>
+          </div>
+          <form id="privacy-erase-form" class="grid-form">
+            <label>
+              Email
+              <input name="email" placeholder="visitor@example.com" />
+            </label>
+            <label>
+              Phone
+              <input name="phone" placeholder="+1 555 0100" />
+            </label>
+            <label>
+              Visitor ID
+              <input name="visitorId" />
+            </label>
+            <label>
+              Conversation ID
+              <input name="conversationId" />
+            </label>
+            <label class="wide">
+              Reason
+              <input name="reason" placeholder="Customer requested erasure" />
+            </label>
+            <button type="submit">Erase subject</button>
+            <button id="retention-run-button" type="button">Run retention</button>
+          </form>
+          <div id="privacy-result" class="record-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <h2>Recent leads</h2>
+            <button id="export-leads-button" type="button">Export CSV</button>
+          </div>
+          <div id="lead-list" class="record-list"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Support queue</h2>
+          <div id="support-ticket-list" class="record-list"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Action audit</h2>
+          <div id="action-list" class="record-list"></div>
+        </section>
+      </section>
+    </main>
+
+    <script src="/admin.js" defer></script>
+  </body>
+</html>

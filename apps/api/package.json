@@ -1,0 +1,19 @@
+{
+  "name": "@chatbot/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/server.js",
+    "dev": "npm run build && node --watch dist/server.js",
+    "test": "npm run build && node --test dist/chat-engine.test.js dist/server.test.js dist/store.test.js",
+    "eval": "npm run build && node dist/assistant-eval.js"
+  },
+  "dependencies": {
+    "@chatbot/ai": "0.1.0",
+    "@chatbot/contracts": "0.1.0"
+  }
+}

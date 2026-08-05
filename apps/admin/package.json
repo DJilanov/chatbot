@@ -1,0 +1,12 @@
+{
+  "name": "@chatbot/admin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/check.mjs",
+    "type-check": "node scripts/check.mjs",
+    "dev": "node scripts/serve.mjs"
+  }
+}
+

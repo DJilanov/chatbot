@@ -1,0 +1,14 @@
+{
+  "name": "@chatbot/widget",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/widget.js",
+  "types": "dist/widget.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "build:watch": "tsc -p tsconfig.json --watch",
+    "type-check": "tsc -p tsconfig.json --noEmit"
+  }
+}
+

@@ -1,0 +1,666 @@
+const state = {
+  apiUrl: localStorage.getItem('admin:apiUrl') || 'http://localhost:8787',
+  token: localStorage.getItem('admin:token') || 'change-me',
+  organizations: [],
+  sites: [],
+  billingPlans: [],
+  selectedSiteId: localStorage.getItem('admin:selectedSiteId') || '',
+};
+
+const qs = (selector) => document.querySelector(selector);
+
+function headers() {
+  return {
+    Authorization: `Bearer ${state.token}`,
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  };
+}
+
+async function api(path, options = {}) {
+  const response = await fetch(`${state.apiUrl}${path}`, {
+    ...options,
+    headers: { ...headers(), ...(options.headers || {}) },
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.message || response.statusText);
+  return body;
+}
+
+function setStatus(message, kind = '') {
+  const node = qs('#status');
+  node.textContent = message;
+  node.className = `status ${kind}`.trim();
+}
+
+function formRecord(form) {
+  return Object.fromEntries(new FormData(form).entries());
+}
+
+function splitList(value) {
+  return String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+async function loadAll() {
+  const [organizations, sites, billingPlans] = await Promise.all([
+    api('/admin/organizations'),
+    api('/admin/sites'),
+    api('/admin/billing-plans'),
+  ]);
+  state.organizations = organizations;
+  state.sites = sites;
+  state.billingPlans = billingPlans;
+  if (!state.selectedSiteId && state.sites[0]) state.selectedSiteId = state.sites[0].id;
+  renderOrganizations();
+  renderBillingPlans();
+  renderSites();
+  await loadSelectedSite();
+  setStatus('Connected.', 'ok');
+}
+
+function renderOrganizations() {
+  const select = qs('#organization-select');
+  select.innerHTML = state.organizations
+    .map((org) => `<option value="${escapeHtml(org.id)}">${escapeHtml(org.name)}</option>`)
+    .join('');
+}
+
+function renderBillingPlans() {
+  const select = qs('#billing-plan-select');
+  if (!select) return;
+  select.innerHTML = state.billingPlans
+    .map((plan) => `<option value="${escapeHtml(plan.id)}">${escapeHtml(plan.name)}</option>`)
+    .join('');
+}
+
+function renderSites() {
+  const list = qs('#site-list');
+  list.innerHTML = state.sites
+    .map(
+      (site) => `
+        <button type="button" data-site-id="${escapeHtml(site.id)}" class="${site.id === state.selectedSiteId ? 'active' : ''}">
+          <strong>${escapeHtml(site.name)}</strong><br />
+          <small>${escapeHtml(site.config.websiteUrl || site.id)}</small>
+        </button>
+      `,
+    )
+    .join('');
+  list.querySelectorAll('button[data-site-id]').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.selectedSiteId = button.dataset.siteId;
+      localStorage.setItem('admin:selectedSiteId', state.selectedSiteId);
+      renderSites();
+      void loadSelectedSite();
+    });
+  });
+}
+
+async function loadSelectedSite() {
+  if (!state.selectedSiteId) return;
+  const site = await api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}`);
+  fillConfig(site);
+  const [knowledge, analytics, billing, users, leads, actions, supportTickets] = await Promise.all([
+    api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/knowledge`),
+    api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/analytics?days=30`),
+    optionalApi(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/billing`),
+    optionalApi(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/users`),
+    api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/leads`),
+    api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/actions`),
+    api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/support-tickets`),
+  ]);
+  renderKnowledge(knowledge);
+  renderAnalytics(analytics);
+  renderBilling(billing);
+  renderUsers(users);
+  renderLeads(leads);
+  renderActions(actions);
+  renderSupportTickets(supportTickets);
+}
+
+async function optionalApi(path) {
+  try {
+    return await api(path);
+  } catch (error) {
+    return { unavailable: true, message: error.message };
+  }
+}
+
+function fillConfig(site) {
+  const form = qs('#config-form');
+  form.elements.title.value = site.config.branding.title || '';
+  form.elements.subtitle.value = site.config.branding.subtitle || '';
+  form.elements.assistantName.value = site.config.branding.assistantName || '';
+  form.elements.primaryColor.value = site.config.branding.primaryColor || '';
+  form.elements.email.value = site.config.contact.email || '';
+  form.elements.phone.value = site.config.contact.phone || '';
+  form.elements.leadWebhookUrl.value = site.config.integrations?.leadWebhookUrl || '';
+  form.elements.supportWebhookUrl.value = site.config.integrations?.supportWebhookUrl || '';
+  form.elements.welcomeMessage.value = site.config.welcomeMessage || '';
+  form.elements.fallbackMessage.value = site.config.fallbackMessage || '';
+  form.elements.leadCapturePrompt.value = site.config.leadCapturePrompt || '';
+}
+
+function renderKnowledge(entries) {
+  qs('#knowledge-count').textContent = `${entries.length} entries`;
+  qs('#knowledge-list').innerHTML = entries
+    .map(
+      (entry) => `
+        <article class="record">
+          <strong>${escapeHtml(entry.title)}</strong>
+          <p>${escapeHtml(entry.intent)} | ${escapeHtml(entry.keywords.join(', '))}</p>
+          <p>${escapeHtml(entry.answer.en || entry.answer.bg || '')}</p>
+        </article>
+      `,
+    )
+    .join('');
+}
+
+function renderAnalytics(summary) {
+  qs('#metric-conversations').textContent = summary.conversations;
+  qs('#metric-messages').textContent = summary.messages;
+  qs('#metric-leads').textContent = summary.leads;
+  qs('#metric-handoffs').textContent = summary.handoffs;
+}
+
+function renderBilling(summary) {
+  if (summary.unavailable) {
+    qs('#billing-status').textContent = 'unavailable';
+    qs('#billing-usage').innerHTML = `<p>${escapeHtml(summary.message)}</p>`;
+    qs('#billing-form').hidden = true;
+    return;
+  }
+  qs('#billing-form').hidden = false;
+  const form = qs('#billing-form');
+  form.elements.planId.value = summary.billing.planId;
+  form.elements.status.value = summary.billing.status;
+  form.elements.trialEndsAt.value = summary.billing.trialEndsAt || '';
+  form.elements.currentPeriodEnd.value = summary.billing.currentPeriodEnd || '';
+  qs('#billing-status').textContent = summary.canUseService ? summary.billing.status : summary.blockReason || summary.billing.status;
+  qs('#billing-usage').innerHTML = summary.metrics
+    .map(
+      (metric) => `
+        <article class="usage-row ${metric.exceeded ? 'exceeded' : ''}">
+          <div>
+            <strong>${escapeHtml(metric.label)}</strong>
+            <span>${escapeHtml(limitText(metric))}</span>
+          </div>
+          <progress value="${escapeHtml(progressValue(metric))}" max="100"></progress>
+        </article>
+      `,
+    )
+    .join('');
+}
+
+function renderUsers(result) {
+  const form = qs('#user-form');
+  const output = qs('#created-token');
+  if (result.unavailable) {
+    qs('#user-count').textContent = 'unavailable';
+    form.hidden = true;
+    output.hidden = true;
+    qs('#user-list').innerHTML = `<p>${escapeHtml(result.message)}</p>`;
+    return;
+  }
+  form.hidden = false;
+  qs('#user-count').textContent = `${result.length} users`;
+  qs('#user-list').innerHTML =
+    result
+      .map(
+        (user) => `
+          <article class="record">
+            <div class="record-heading">
+              <strong>${escapeHtml(user.name)}</strong>
+              <span class="pill">${escapeHtml(user.role)}</span>
+            </div>
+            <p>${escapeHtml(user.email)}</p>
+            <div class="record-actions">
+              <select data-user-role="${escapeHtml(user.id)}">
+                ${roleOptions(user.role)}
+              </select>
+              <label class="checkbox-row">
+                <input type="checkbox" data-user-disabled="${escapeHtml(user.id)}" ${user.disabled ? 'checked' : ''} />
+                Disabled
+              </label>
+              <button type="button" data-save-user="${escapeHtml(user.id)}">Save</button>
+            </div>
+          </article>
+        `,
+      )
+      .join('') || '<p>No users yet.</p>';
+  qs('#user-list').querySelectorAll('button[data-save-user]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const userId = button.dataset.saveUser;
+      const role = qs(`[data-user-role="${cssEscape(userId)}"]`);
+      const disabled = qs(`[data-user-disabled="${cssEscape(userId)}"]`);
+      if (!role || !disabled) return;
+      void updateUser(userId, role.value, disabled.checked).catch((error) => setStatus(error.message, 'error'));
+    });
+  });
+}
+
+function renderLeads(leads) {
+  const list = qs('#lead-list');
+  list.innerHTML =
+    leads
+      .slice()
+      .reverse()
+      .slice(0, 10)
+      .map(
+        (lead) => `
+          <article class="record">
+            <div class="record-heading">
+              <strong>${escapeHtml(lead.email || lead.phone || lead.name || 'Lead')}</strong>
+              <span class="pill">${escapeHtml(lead.status)}</span>
+            </div>
+            <p>${escapeHtml(lead.message)}</p>
+            <p>${escapeHtml(new Date(lead.createdAt).toLocaleString())}</p>
+            <div class="record-actions">
+              <select data-lead-status="${escapeHtml(lead.id)}">
+                ${leadStatusOptions(lead.status)}
+              </select>
+              <button type="button" data-save-lead="${escapeHtml(lead.id)}">Save</button>
+            </div>
+          </article>
+        `,
+      )
+      .join('') || '<p>No leads yet.</p>';
+  list.querySelectorAll('button[data-save-lead]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const leadId = button.dataset.saveLead;
+      const select = qs(`[data-lead-status="${cssEscape(leadId)}"]`);
+      if (!select) return;
+      void updateLeadStatus(leadId, select.value).catch((error) => setStatus(error.message, 'error'));
+    });
+  });
+}
+
+function renderSupportTickets(tickets) {
+  const list = qs('#support-ticket-list');
+  list.innerHTML =
+    tickets
+      .slice()
+      .reverse()
+      .slice(0, 10)
+      .map(
+        (ticket) => `
+          <article class="record">
+            <div class="record-heading">
+              <strong>${escapeHtml(ticket.customerEmail || ticket.customerPhone || ticket.reason)}</strong>
+              <span class="pill">${escapeHtml(ticket.status)}</span>
+            </div>
+            <p>${escapeHtml(ticket.sourceText)}</p>
+            <p>${escapeHtml(new Date(ticket.createdAt).toLocaleString())}</p>
+            <div class="record-actions">
+              <select data-ticket-status="${escapeHtml(ticket.id)}">
+                ${supportStatusOptions(ticket.status)}
+              </select>
+              <button type="button" data-save-ticket="${escapeHtml(ticket.id)}">Save</button>
+            </div>
+          </article>
+        `,
+      )
+      .join('') || '<p>No support tickets yet.</p>';
+  list.querySelectorAll('button[data-save-ticket]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const ticketId = button.dataset.saveTicket;
+      const select = qs(`[data-ticket-status="${cssEscape(ticketId)}"]`);
+      if (!select) return;
+      void updateSupportTicketStatus(ticketId, select.value).catch((error) => setStatus(error.message, 'error'));
+    });
+  });
+}
+
+function renderActions(actions) {
+  qs('#action-list').innerHTML =
+    actions
+      .slice()
+      .reverse()
+      .slice(0, 20)
+      .map(
+        (action) => `
+          <article class="record">
+            <strong>${escapeHtml(action.action)} | ${escapeHtml(action.status)}</strong>
+            <p>${escapeHtml(action.sourceText || '-')}</p>
+            <p>${escapeHtml(action.reply || '')}</p>
+          </article>
+        `,
+      )
+      .join('') || '<p>No actions yet.</p>';
+}
+
+async function createOrganization(event) {
+  event.preventDefault();
+  const values = formRecord(event.currentTarget);
+  await api('/admin/organizations', {
+    method: 'POST',
+    body: JSON.stringify({ name: values.name }),
+  });
+  event.currentTarget.reset();
+  await loadAll();
+}
+
+async function createSite(event) {
+  event.preventDefault();
+  const values = formRecord(event.currentTarget);
+  const site = await api('/admin/sites', {
+    method: 'POST',
+    body: JSON.stringify({
+      organizationId: values.organizationId,
+      name: values.name,
+      websiteUrl: values.websiteUrl || null,
+      allowedDomains: splitList(values.allowedDomains),
+    }),
+  });
+  state.selectedSiteId = site.id;
+  localStorage.setItem('admin:selectedSiteId', state.selectedSiteId);
+  event.currentTarget.reset();
+  await loadAll();
+}
+
+async function saveConfig(event) {
+  event.preventDefault();
+  if (!state.selectedSiteId) return;
+  const values = formRecord(event.currentTarget);
+  await api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/config`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      branding: {
+        title: values.title,
+        subtitle: values.subtitle,
+        assistantName: values.assistantName,
+        primaryColor: values.primaryColor,
+      },
+      contact: {
+        email: values.email || null,
+        phone: values.phone || null,
+      },
+      integrations: {
+        leadWebhookUrl: values.leadWebhookUrl || null,
+        supportWebhookUrl: values.supportWebhookUrl || null,
+      },
+      welcomeMessage: values.welcomeMessage,
+      fallbackMessage: values.fallbackMessage,
+      leadCapturePrompt: values.leadCapturePrompt,
+    }),
+  });
+  await loadSelectedSite();
+  setStatus('Configuration saved.', 'ok');
+}
+
+async function saveBilling(event) {
+  event.preventDefault();
+  if (!state.selectedSiteId) return;
+  const values = formRecord(event.currentTarget);
+  await api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/billing`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      planId: values.planId,
+      status: values.status,
+      trialEndsAt: values.trialEndsAt || null,
+      currentPeriodEnd: values.currentPeriodEnd || null,
+    }),
+  });
+  await loadSelectedSite();
+  setStatus('Billing saved.', 'ok');
+}
+
+async function createUser(event) {
+  event.preventDefault();
+  if (!state.selectedSiteId) return;
+  const values = formRecord(event.currentTarget);
+  const response = await api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/users`, {
+    method: 'POST',
+    body: JSON.stringify({
+      name: values.name,
+      email: values.email,
+      role: values.role,
+    }),
+  });
+  event.currentTarget.reset();
+  renderCreatedToken(response);
+  await loadSelectedSite();
+  setStatus('User created.', 'ok');
+}
+
+async function addKnowledge(event) {
+  event.preventDefault();
+  if (!state.selectedSiteId) return;
+  const values = formRecord(event.currentTarget);
+  await api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/knowledge`, {
+    method: 'POST',
+    body: JSON.stringify({
+      title: values.title,
+      intent: values.intent,
+      keywords: splitList(values.keywords),
+      answer: {
+        en: values.answerEn,
+        bg: values.answerBg,
+      },
+    }),
+  });
+  event.currentTarget.reset();
+  await loadSelectedSite();
+  setStatus('Knowledge entry added.', 'ok');
+}
+
+async function updateUser(userId, role, disabled) {
+  if (!state.selectedSiteId || !userId) return;
+  await api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/users/${encodeURIComponent(userId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ role, disabled }),
+  });
+  await loadSelectedSite();
+  setStatus('User saved.', 'ok');
+}
+
+async function updateLeadStatus(leadId, status) {
+  if (!state.selectedSiteId || !leadId) return;
+  await api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/leads/${encodeURIComponent(leadId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+  await loadSelectedSite();
+  setStatus('Lead status saved.', 'ok');
+}
+
+async function updateSupportTicketStatus(ticketId, status) {
+  if (!state.selectedSiteId || !ticketId) return;
+  await api(
+    `/admin/sites/${encodeURIComponent(state.selectedSiteId)}/support-tickets/${encodeURIComponent(ticketId)}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    },
+  );
+  await loadSelectedSite();
+  setStatus('Support ticket status saved.', 'ok');
+}
+
+async function exportLeads() {
+  if (!state.selectedSiteId) return;
+  const response = await fetch(
+    `${state.apiUrl}/admin/sites/${encodeURIComponent(state.selectedSiteId)}/leads/export`,
+    {
+      headers: { Authorization: `Bearer ${state.token}` },
+    },
+  );
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.message || response.statusText);
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `leads-${state.selectedSiteId}.csv`;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+  setStatus('Lead export downloaded.', 'ok');
+}
+
+async function exportSiteData() {
+  if (!state.selectedSiteId) return;
+  const payload = await api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/privacy/export`);
+  downloadJson(`site-data-${state.selectedSiteId}.json`, payload);
+  renderPrivacyResult('Site data export downloaded.', payload);
+  setStatus('Site data export downloaded.', 'ok');
+}
+
+async function erasePrivacySubject(event) {
+  event.preventDefault();
+  if (!state.selectedSiteId) return;
+  const values = formRecord(event.currentTarget);
+  const response = await api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/privacy/erase`, {
+    method: 'POST',
+    body: JSON.stringify({
+      email: values.email || undefined,
+      phone: values.phone || undefined,
+      visitorId: values.visitorId || undefined,
+      conversationId: values.conversationId || undefined,
+      reason: values.reason || undefined,
+    }),
+  });
+  event.currentTarget.reset();
+  renderPrivacyResult('Privacy erasure completed.', response);
+  await loadSelectedSite();
+  setStatus('Privacy erasure completed.', 'ok');
+}
+
+async function runRetentionCleanup() {
+  if (!state.selectedSiteId) return;
+  const response = await api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/privacy/retention-run`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+  renderPrivacyResult('Retention cleanup completed.', response);
+  await loadSelectedSite();
+  setStatus('Retention cleanup completed.', 'ok');
+}
+
+function leadStatusOptions(selected) {
+  return ['new', 'contacted', 'qualified', 'won', 'lost', 'spam']
+    .map((status) => optionHtml(status, selected))
+    .join('');
+}
+
+function supportStatusOptions(selected) {
+  return ['new', 'waiting_customer', 'waiting_staff', 'resolved', 'blocked']
+    .map((status) => optionHtml(status, selected))
+    .join('');
+}
+
+function roleOptions(selected) {
+  return ['owner', 'admin', 'support', 'viewer'].map((role) => optionHtml(role, selected)).join('');
+}
+
+function optionHtml(value, selected) {
+  const isSelected = value === selected ? ' selected' : '';
+  return `<option value="${escapeHtml(value)}"${isSelected}>${escapeHtml(value.replace(/_/g, ' '))}</option>`;
+}
+
+function renderCreatedToken(response) {
+  const output = qs('#created-token');
+  output.hidden = false;
+  output.innerHTML = `
+    <strong>${escapeHtml(response.user.email)} access token</strong>
+    <code>${escapeHtml(response.token)}</code>
+  `;
+}
+
+function renderPrivacyResult(title, payload) {
+  qs('#privacy-result').innerHTML = `
+    <article class="record">
+      <strong>${escapeHtml(title)}</strong>
+      <pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre>
+    </article>
+  `;
+}
+
+function downloadJson(filename, payload) {
+  const blob = new Blob([`${JSON.stringify(payload, null, 2)}\n`], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+function limitText(metric) {
+  if (metric.limit === null) return `${metric.used} used / unlimited`;
+  return `${metric.used} used / ${metric.limit} limit`;
+}
+
+function progressValue(metric) {
+  if (metric.limit === null || metric.limit <= 0) return '0';
+  return String(Math.min(100, Math.round((metric.used / metric.limit) * 100)));
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function cssEscape(value) {
+  return window.CSS?.escape ? window.CSS.escape(String(value || '')) : String(value || '').replace(/"/g, '\\"');
+}
+
+qs('#api-url').value = state.apiUrl;
+qs('#admin-token').value = state.token;
+qs('#connection-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  state.apiUrl = qs('#api-url').value.replace(/\/+$/, '');
+  state.token = qs('#admin-token').value;
+  localStorage.setItem('admin:apiUrl', state.apiUrl);
+  localStorage.setItem('admin:token', state.token);
+  try {
+    await loadAll();
+  } catch (error) {
+    setStatus(error.message, 'error');
+  }
+});
+qs('#organization-form').addEventListener('submit', (event) => {
+  void createOrganization(event).catch((error) => setStatus(error.message, 'error'));
+});
+qs('#site-form').addEventListener('submit', (event) => {
+  void createSite(event).catch((error) => setStatus(error.message, 'error'));
+});
+qs('#config-form').addEventListener('submit', (event) => {
+  void saveConfig(event).catch((error) => setStatus(error.message, 'error'));
+});
+qs('#billing-form').addEventListener('submit', (event) => {
+  void saveBilling(event).catch((error) => setStatus(error.message, 'error'));
+});
+qs('#user-form').addEventListener('submit', (event) => {
+  void createUser(event).catch((error) => setStatus(error.message, 'error'));
+});
+qs('#privacy-erase-form').addEventListener('submit', (event) => {
+  void erasePrivacySubject(event).catch((error) => setStatus(error.message, 'error'));
+});
+qs('#knowledge-form').addEventListener('submit', (event) => {
+  void addKnowledge(event).catch((error) => setStatus(error.message, 'error'));
+});
+qs('#refresh-button').addEventListener('click', () => {
+  void loadAll().catch((error) => setStatus(error.message, 'error'));
+});
+qs('#export-leads-button').addEventListener('click', () => {
+  void exportLeads().catch((error) => setStatus(error.message, 'error'));
+});
+qs('#export-data-button').addEventListener('click', () => {
+  void exportSiteData().catch((error) => setStatus(error.message, 'error'));
+});
+qs('#retention-run-button').addEventListener('click', () => {
+  void runRetentionCleanup().catch((error) => setStatus(error.message, 'error'));
+});
+
+void loadAll().catch((error) => setStatus(error.message, 'error'));

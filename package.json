@@ -1,0 +1,29 @@
+{
+  "name": "chatbot-saas",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Embeddable AI sales and support assistant for business websites and ecommerce stores.",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm --workspace @chatbot/contracts run build && npm --workspace @chatbot/ai run build && npm --workspace @chatbot/api run build && npm --workspace @chatbot/widget run build && npm --workspace @chatbot/admin run build && npm --workspace @chatbot/marketing run build",
+    "type-check": "npm --workspace @chatbot/contracts run build && npm --workspace @chatbot/ai run build && npm --workspace @chatbot/api run type-check && npm --workspace @chatbot/widget run type-check && npm --workspace @chatbot/admin run type-check && npm --workspace @chatbot/marketing run type-check",
+    "test": "npm --workspace @chatbot/api run test",
+    "assistant:eval": "npm --workspace @chatbot/api run eval",
+    "seed:dev": "node scripts/seed-dev.mjs",
+    "dev:api": "npm --workspace @chatbot/api run dev",
+    "dev:admin": "npm --workspace @chatbot/admin run dev",
+    "dev:marketing": "npm --workspace @chatbot/marketing run dev",
+    "dev:widget": "npm --workspace @chatbot/widget run build:watch"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.17",
+    "typescript": "^5.9.3"
+  }
+}

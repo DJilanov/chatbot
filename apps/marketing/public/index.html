@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Assistant SaaS | AI Sales and Support Assistant</title>
+    <meta
+      name="description"
+      content="Embed an AI assistant that answers from approved knowledge, captures leads, recommends products, routes support, and keeps an action audit trail."
+    />
+    <meta property="og:title" content="Assistant SaaS | AI Sales and Support Assistant" />
+    <meta
+      property="og:description"
+      content="A safe AI assistant for business websites and ecommerce stores: approved knowledge, lead capture, product guidance, human handoff, and action audit."
+    />
+    <meta property="og:image" content="/assets/hero-assistant-dashboard.png" />
+    <link rel="preload" href="/assets/hero-assistant-dashboard.png" as="image" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site-nav">
+      <a class="brand" href="#top" aria-label="Assistant SaaS home">
+        <span class="brand-mark">A</span>
+        <span>Assistant SaaS</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="#demo-live">Live demo</a>
+        <a href="#product">Product</a>
+        <a href="#commerce">Ecommerce</a>
+        <a href="#safety">Safety</a>
+        <a href="#pricing">Pricing</a>
+      </nav>
+      <a class="nav-cta" href="#demo">Book a demo</a>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <img
+          src="/assets/hero-assistant-dashboard.png"
+          alt="AI assistant dashboard with chat widget, product cards, analytics, and action audit"
+          width="1792"
+          height="1024"
+        />
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+          <p class="eyebrow">Embeddable AI sales and support assistant</p>
+          <h1>Turn website visitors into leads, answers, and routed support cases</h1>
+          <p class="hero-copy">
+            Generic chatbots answer questions. Assistant SaaS uses approved business knowledge,
+            captures contacts, recommends products, hands off uncertain cases, and logs what
+            happened so your team can trust it.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="#demo">Book a demo</a>
+            <button class="button secondary" type="button" data-open-chat>
+              Try live assistant
+            </button>
+          </div>
+          <dl class="hero-metrics" aria-label="Product proof points">
+            <div>
+              <dt>One script</dt>
+              <dd>Install on any website</dd>
+            </div>
+            <div>
+              <dt>Approved knowledge</dt>
+              <dd>Answers your team controls</dd>
+            </div>
+            <div>
+              <dt>Action audit</dt>
+              <dd>Review every key event</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="proof-band" aria-label="Product proof">
+        <p>Built from a production ecommerce assistant</p>
+        <p>Guarded cart, order, invoice, return, and warranty flows</p>
+        <p>Designed for multilingual websites and EU transparency rules</p>
+      </section>
+
+      <section id="demo-live" class="section live-demo">
+        <div class="section-heading">
+          <p class="eyebrow">Live demo</p>
+          <h2>Let buyers try the product before they book</h2>
+          <p>
+            The landing page includes the actual embeddable widget. These prompt buttons open the
+            demo assistant and send real messages to the local demo API when it is running.
+          </p>
+        </div>
+        <div class="prompt-grid">
+          <button type="button" data-demo-prompt="What does the assistant do?">
+            What does the assistant do?
+          </button>
+          <button type="button" data-demo-prompt="How much does it cost?">
+            How much does it cost?
+          </button>
+          <button type="button" data-demo-prompt="Can it work with ecommerce?">
+            Can it work with ecommerce?
+          </button>
+          <button type="button" data-demo-prompt="I want to speak with support">
+            I want to speak with support
+          </button>
+        </div>
+      </section>
+
+      <section id="product" class="section product-story">
+        <div class="section-heading">
+          <p class="eyebrow">Product</p>
+          <h2>Everything a business needs after the first chat message</h2>
+          <p>
+            The assistant is built around operational outcomes: answer, qualify, route, hand off,
+            or log for review. That is what makes it easier to sell than a generic chatbot.
+          </p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card">
+            <span class="icon">K</span>
+            <h3>Knowledge editor</h3>
+            <p>Business users manage official answers for services, pricing policy, delivery, invoices, returns, warranty, and support.</p>
+          </article>
+          <article class="feature-card">
+            <span class="icon">L</span>
+            <h3>Lead capture</h3>
+            <p>Capture name, email, phone, company, website URL, consent, source page, and the visitor's original request.</p>
+          </article>
+          <article class="feature-card">
+            <span class="icon">S</span>
+            <h3>Support queue</h3>
+            <p>Unresolved cases become staff tickets with transcript, reason, locale, page URL, and contact details.</p>
+          </article>
+          <article class="feature-card">
+            <span class="icon">A</span>
+            <h3>Action audit</h3>
+            <p>Track answered, pending, completed, failed, and blocked actions with deterministic or AI confidence.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section walkthrough">
+        <div>
+          <p class="eyebrow">Workflow</p>
+          <h2>From blank site to useful assistant in one afternoon</h2>
+          <p>
+            The MVP is intentionally simple: configure the assistant, add knowledge, install the
+            widget, then watch conversations and leads arrive in the admin console.
+          </p>
+        </div>
+        <ol class="steps">
+          <li>
+            <strong>Create a site</strong>
+            <span>Set domain allowlist, languages, assistant name, colors, and privacy settings.</span>
+          </li>
+          <li>
+            <strong>Add approved answers</strong>
+            <span>Write knowledge entries for the questions your team answers every day.</span>
+          </li>
+          <li>
+            <strong>Install one script</strong>
+            <span>Paste the widget tag into the customer website or deploy through a tag manager.</span>
+          </li>
+          <li>
+            <strong>Review outcomes</strong>
+            <span>Inspect leads, conversations, support tickets, and action audit events.</span>
+          </li>
+        </ol>
+      </section>
+
+      <section class="section proof-section">
+        <div class="section-heading">
+          <p class="eyebrow">Proof</p>
+          <h2>The sales story is strongest when it shows real workflows</h2>
+          <p>
+            Use production screenshots and real anonymized conversations here as soon as they are
+            available. Until then, the page presents the concrete product surfaces buyers need to see.
+          </p>
+        </div>
+        <div class="surface-grid">
+          <article>
+            <h3>Widget experience</h3>
+            <p>Visible AI disclosure, persisted conversation, feedback buttons, lead fields, and prompt shortcuts.</p>
+          </article>
+          <article>
+            <h3>Admin operations</h3>
+            <p>Configure sites, edit knowledge, review leads, inspect analytics, and diagnose assistant decisions.</p>
+          </article>
+          <article>
+            <h3>Action audit</h3>
+            <p>See why the assistant answered, asked for contact details, created a handoff, or blocked a request.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section split modes">
+        <div>
+          <p class="eyebrow">Use cases</p>
+          <h2>Start with leads. Upgrade to commerce.</h2>
+          <p>
+            Sell a narrow lead assistant first, then expand accounts into product-aware ecommerce
+            and managed optimization.
+          </p>
+        </div>
+        <div class="mode-list">
+          <article>
+            <h3>Lead Assistant</h3>
+            <p>FAQ answers, lead qualification, contact capture, meeting/demo routing, email notifications, webhooks, and analytics.</p>
+          </article>
+          <article>
+            <h3>Commerce Assistant</h3>
+            <p>Product discovery, product cards, comparison, cart and checkout handoff, return/warranty/order support routing.</p>
+          </article>
+          <article>
+            <h3>Managed Assistant</h3>
+            <p>Setup, knowledge writing, product feed QA, monthly conversation review, safety tuning, and conversion optimization.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="commerce" class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Ecommerce</p>
+          <h2>Product-aware answers with safe action boundaries</h2>
+          <p>
+            The commerce tier should sell the difference between "the bot said something" and "the
+            system safely routed the next step."
+          </p>
+        </div>
+        <div class="workflow">
+          <div>Find products by brand, model, SKU, category, price, availability, and attributes</div>
+          <div>Show product cards with image, URL, price, stock, variants, and recommendation reason</div>
+          <div>Compare visible products by processor, display, memory, storage, grade, or custom specs</div>
+          <div>Route cart, checkout, favorites, alerts, orders, invoices, returns, and warranty requests</div>
+        </div>
+      </section>
+
+      <section id="safety" class="section safety">
+        <div class="section-heading">
+          <p class="eyebrow">Safety</p>
+          <h2>A safer pitch for companies that cannot afford hallucinated operations</h2>
+          <p>
+            Buyers care less about "AI magic" than whether the assistant can be trusted around
+            orders, prices, payments, support, and customer data.
+          </p>
+        </div>
+        <ul class="check-list">
+          <li>Clear disclosure that visitors are interacting with an AI assistant.</li>
+          <li>Approved knowledge is used before AI fallback.</li>
+          <li>No invented order, payment, invoice, delivery, return, warranty, or cancellation status.</li>
+          <li>No cart or order mutation claims until the real website confirms the action.</li>
+          <li>Human handoff when the assistant is uncertain or the request is sensitive.</li>
+          <li>Domain allowlist, rate limits, output sanitization, and public widget token boundaries.</li>
+          <li>Conversation retention controls and privacy links for GDPR-ready deployments.</li>
+          <li>Action logs show status, confidence, reason, source text, reply, and review notes.</li>
+        </ul>
+      </section>
+
+      <section class="section comparison">
+        <div class="section-heading">
+          <p class="eyebrow">Differentiation</p>
+          <h2>Why this beats a generic chatbot plugin</h2>
+        </div>
+        <div class="comparison-table" role="table" aria-label="Assistant SaaS compared with generic chatbots">
+          <div role="row" class="table-head">
+            <span role="columnheader">Capability</span>
+            <span role="columnheader">Generic chatbot</span>
+            <span role="columnheader">Assistant SaaS</span>
+          </div>
+          <div role="row">
+            <span role="cell">Official answers</span>
+            <span role="cell">Prompt-dependent</span>
+            <span role="cell">Approved knowledge first</span>
+          </div>
+          <div role="row">
+            <span role="cell">Business outcome</span>
+            <span role="cell">Conversation only</span>
+            <span role="cell">Lead, handoff, action, or audit event</span>
+          </div>
+          <div role="row">
+            <span role="cell">Ecommerce flow</span>
+            <span role="cell">Often guesses</span>
+            <span role="cell">Safe product and checkout boundaries</span>
+          </div>
+          <div role="row">
+            <span role="cell">Reviewability</span>
+            <span role="cell">Limited transcript</span>
+            <span role="cell">Action status, confidence, reason, metadata</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Integrations</p>
+          <h2>Connect the systems customers already use</h2>
+        </div>
+        <div class="integration-grid">
+          <span>Website widget</span>
+          <span>Email notifications</span>
+          <span>Webhooks</span>
+          <span>CSV product feed</span>
+          <span>JSON product feed</span>
+          <span>Custom REST API</span>
+          <span>Jilanovi ecommerce</span>
+          <span>Shopify planned</span>
+          <span>WooCommerce planned</span>
+          <span>OpenCart planned</span>
+          <span>HubSpot planned</span>
+          <span>Pipedrive planned</span>
+        </div>
+      </section>
+
+      <section id="pricing" class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Pricing</p>
+          <h2>Packages for how the assistant creates value</h2>
+          <p>
+            Keep pricing simple during pilots. Sell by site, included conversations, integrations,
+            and whether the customer wants managed setup.
+          </p>
+        </div>
+        <div class="pricing-grid">
+          <article>
+            <span class="plan-label">Website</span>
+            <h3>Starter</h3>
+            <p>Lead Assistant for one business website with knowledge answers, contact capture, and basic analytics.</p>
+            <a href="#demo">Book a demo</a>
+          </article>
+          <article class="featured">
+            <span class="plan-label">Most teams</span>
+            <h3>Growth</h3>
+            <p>More usage, multiple users, knowledge history, webhooks, lead inbox, and deeper reporting.</p>
+            <a href="#demo">Book a demo</a>
+          </article>
+          <article>
+            <span class="plan-label">Online stores</span>
+            <h3>Commerce</h3>
+            <p>Product feed, product cards, comparison, ecommerce handoff actions, and support queue.</p>
+            <a href="#demo">Book a demo</a>
+          </article>
+          <article>
+            <span class="plan-label">Done for you</span>
+            <h3>Managed</h3>
+            <p>Setup, knowledge writing, monthly QA, safety tuning, product-feed checks, and optimization.</p>
+            <a href="#demo">Book a demo</a>
+          </article>
+        </div>
+      </section>
+
+      <section id="demo" class="section demo">
+        <div>
+          <p class="eyebrow">Demo</p>
+          <h2>See how the assistant would work on your website</h2>
+          <p>
+            Share your site, ecommerce platform, and main goal. The form submits to the demo API
+            when it is running and stores the request as a lead.
+          </p>
+        </div>
+        <form class="demo-form" id="demo-form">
+          <label>
+            Name
+            <input name="name" autocomplete="name" required />
+          </label>
+          <label>
+            Email
+            <input name="email" type="email" autocomplete="email" required />
+          </label>
+          <label>
+            Website URL
+            <input name="website" autocomplete="url" placeholder="https://example.com" />
+          </label>
+          <label>
+            Ecommerce platform
+            <input name="platform" placeholder="Shopify, WooCommerce, OpenCart, custom..." />
+          </label>
+          <label class="wide">
+            Main goal
+            <select name="goal">
+              <option>Capture more leads</option>
+              <option>Recommend products</option>
+              <option>Reduce support load</option>
+              <option>Improve ecommerce conversion</option>
+            </select>
+          </label>
+          <button type="submit">Book a demo</button>
+          <p class="form-status" id="form-status" role="status"></p>
+        </form>
+      </section>
+
+      <section class="section faq">
+        <div class="section-heading">
+          <p class="eyebrow">FAQ</p>
+          <h2>Common buyer objections</h2>
+        </div>
+        <details>
+          <summary>Is this just ChatGPT embedded on my site?</summary>
+          <p>No. The assistant uses approved knowledge, structured action boundaries, lead capture, human handoff, analytics, and an audit trail.</p>
+        </details>
+        <details>
+          <summary>Will it invent prices or order information?</summary>
+          <p>No. Sensitive operational facts must come from configured knowledge or connected systems. Otherwise the assistant asks for details or routes to staff.</p>
+        </details>
+        <details>
+          <summary>Can my team edit answers?</summary>
+          <p>Yes. The knowledge base is designed for non-technical users and keeps revision history in the product roadmap.</p>
+        </details>
+        <details>
+          <summary>Can it work with ecommerce platforms?</summary>
+          <p>The MVP supports generic feeds and custom APIs first. Shopify, WooCommerce, and OpenCart are planned integration adapters.</p>
+        </details>
+        <details>
+          <summary>How is customer data handled?</summary>
+          <p>The product plan includes data retention controls, privacy links, consent-aware analytics, and deletion/export workflows before production launch.</p>
+        </details>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>Assistant SaaS</p>
+      <nav aria-label="Footer navigation">
+        <a href="#demo">Contact</a>
+        <a href="#safety">Privacy and AI transparency</a>
+        <a href="#product">Product</a>
+      </nav>
+    </footer>
+
+    <script src="/app.js" defer></script>
+    <script
+      src="/vendor/widget.js"
+      data-site-id="site_demo"
+      data-api-url="http://localhost:8787"
+      async
+    ></script>
+  </body>
+</html>
