@@ -45,4 +45,10 @@ for (const text of [
   if (!script.includes(text)) throw new Error(`Missing landing behavior: ${text}`);
 }
 
+const translationsIndex = script.indexOf('const translations = {');
+const bootstrapIndex = script.lastIndexOf('bootstrap();');
+if (translationsIndex === -1 || bootstrapIndex === -1 || bootstrapIndex < translationsIndex) {
+  throw new Error('Landing translations must be initialized before bootstrap runs');
+}
+
 process.stdout.write('Marketing page check passed\n');

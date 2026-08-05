@@ -7,13 +7,16 @@
   const originalTextNodes = new WeakMap();
   const originalAttributes = new WeakMap();
 
-  let currentLocale = detectPreferredLocale();
-  window.CHATBOT_LOCALE = currentLocale;
+  let currentLocale = defaultLocale;
 
-  applyLocale(currentLocale, { notifyWidget: false, persist: false });
-  bindLanguageSwitch();
-  bindChatButtons();
-  bindDemoForm();
+  function bootstrap() {
+    currentLocale = detectPreferredLocale();
+    window.CHATBOT_LOCALE = currentLocale;
+    applyLocale(currentLocale, { notifyWidget: false, persist: false });
+    bindLanguageSwitch();
+    bindChatButtons();
+    bindDemoForm();
+  }
 
   function bindLanguageSwitch() {
     document.querySelectorAll('[data-locale-option]').forEach((button) => {
@@ -499,6 +502,7 @@
         'Online store': 'Онлайн магазин',
         'Online stores': 'Онлайн магазини',
         'OpenCart planned': 'OpenCart планирано',
+        Outcomes: 'Резултати',
         'Paste the widget tag into the customer website or deploy through a tag manager.':
           'Поставете widget tag в сайта на клиента или го добавете през tag manager.',
         'Phone': 'Телефон',
@@ -634,4 +638,5 @@
       },
     },
   };
+  bootstrap();
 })();
