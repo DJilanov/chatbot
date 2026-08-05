@@ -3,7 +3,7 @@ import test from 'node:test';
 import type { AiProvider } from '@chatbot/ai';
 import type { KnowledgeEntry, ProductItem, Site } from '@chatbot/contracts';
 import { defaultSiteConfig } from './defaults.js';
-import { findKnowledgeMatch, resolveChat, sanitizeAssistantReply } from './chat-engine.js';
+import { extractContactDetails, findKnowledgeMatch, resolveChat, sanitizeAssistantReply } from './chat-engine.js';
 
 const site: Site = {
   id: 'site_test',
@@ -98,6 +98,30 @@ test('product matches return product recommendation cards', async () => {
   assert.equal(result.productCards?.length, 1);
   assert.equal(result.productCards?.[0]?.sku, 'T14-BG');
   assert.match(result.reply, /matching products|one matching product/);
+});
+
+test('product SKUs with long numbers are not captured as phone leads', async () => {
+  const numericSkuProduct: ProductItem = {
+    ...products[0]!,
+    id: 'prod_smoke',
+    sku: 'SMOKE-1785940737',
+    title: 'Lenovo ThinkPad Smoke',
+    keywords: ['thinkpad', 'smoke', 'лаптоп'],
+  };
+  const result = await resolveChat({
+    site: { ...site, config: { ...site.config, mode: 'commerce_readonly' } },
+    knowledgeEntries: knowledge,
+    productItems: [numericSkuProduct],
+    history: [],
+    message: 'Покажи Lenovo лаптоп SMOKE-1785940737',
+    locale: 'bg',
+    aiProvider: nullProvider,
+  });
+
+  assert.equal(result.intent, 'product_recommendation');
+  assert.equal(result.productCards?.[0]?.sku, 'SMOKE-1785940737');
+  assert.equal(extractContactDetails('Покажи Lenovo лаптоп SMOKE-1785940737').phone, null);
+  assert.equal(extractContactDetails('Моят телефон е +359888000000').phone, '+359888000000');
 });
 
 test('deterministic replies use the requested locale', async () => {

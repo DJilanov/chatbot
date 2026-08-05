@@ -161,7 +161,10 @@ export async function resolveChat(input: ChatEngineInput): Promise<ChatEngineRes
 
 export function extractContactDetails(text: string): ContactDetails {
   const email = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] ?? null;
-  const phone = text.match(/(?:\+?\d[\d\s().-]{6,}\d)/)?.[0]?.replace(/\s+/g, ' ').trim() ?? null;
+  const phoneMatch = [...text.matchAll(/\+?\d[\d\s().-]{6,}\d/g)].find((match) =>
+    isStandalonePhoneCandidate(text, match.index ?? 0, match[0] ?? ''),
+  );
+  const phone = phoneMatch?.[0]?.replace(/\s+/g, ' ').trim() ?? null;
   return { email, phone };
 }
 
@@ -396,6 +399,18 @@ function normalizeSearchText(text: string): string {
     .replace(/[^\p{L}\p{N}\s@.+-]+/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function isStandalonePhoneCandidate(text: string, startIndex: number, value: string): boolean {
+  const before = text[startIndex - 1] ?? '';
+  const after = text[startIndex + value.length] ?? '';
+  const digits = value.replace(/\D/g, '');
+  if (digits.length < 7 || digits.length > 15) return false;
+  return !isIdentifierCharacter(before) && !isIdentifierCharacter(after);
+}
+
+function isIdentifierCharacter(value: string): boolean {
+  return /^[\p{L}\p{N}_-]$/u.test(value);
 }
 
 function isGreeting(normalized: string): boolean {
