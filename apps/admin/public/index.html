@@ -25,6 +25,13 @@
           <button type="submit">Connect</button>
           <button id="sign-out-button" class="secondary-button" type="button" hidden>Sign out</button>
         </form>
+        <label class="language-switch">
+          Language
+          <select id="admin-language">
+            <option value="bg">Bulgarian</option>
+            <option value="en">English</option>
+          </select>
+        </label>
         <p id="identity-summary" class="identity-summary">Not connected</p>
       </div>
     </header>
@@ -143,6 +150,7 @@
                 <option value="payment_policy">Payment policy</option>
                 <option value="invoice_policy">Invoice policy</option>
                 <option value="support">Support</option>
+                <option value="human_handoff">Human handoff</option>
               </select>
             </label>
             <button type="submit">Import draft</button>
@@ -176,9 +184,44 @@
                 <option value="payment_policy">Payment policy</option>
                 <option value="invoice_policy">Invoice policy</option>
                 <option value="support">Support</option>
+                <option value="human_handoff">Human handoff</option>
               </select>
             </label>
             <button type="submit">Import CSV drafts</button>
+          </form>
+          <form id="knowledge-faq-import-form" class="grid-form import-form">
+            <label class="wide">
+              Pasted FAQ or policy text
+              <textarea
+                name="text"
+                placeholder="Question: How does delivery work?&#10;Answer: We deliver within two business days.&#10;&#10;Question: What is the warranty?&#10;Answer: Warranty requests are reviewed by our team."
+                required
+              ></textarea>
+            </label>
+            <label>
+              Default language
+              <select name="locale">
+                <option value="bg">Bulgarian</option>
+                <option value="en">English</option>
+              </select>
+            </label>
+            <label>
+              Default intent
+              <select name="intent">
+                <option value="custom">Custom</option>
+                <option value="company_info">Company info</option>
+                <option value="services">Services</option>
+                <option value="pricing">Pricing</option>
+                <option value="delivery_policy">Delivery policy</option>
+                <option value="returns_policy">Returns policy</option>
+                <option value="warranty_policy">Warranty policy</option>
+                <option value="payment_policy">Payment policy</option>
+                <option value="invoice_policy">Invoice policy</option>
+                <option value="support">Support</option>
+                <option value="human_handoff">Human handoff</option>
+              </select>
+            </label>
+            <button type="submit">Import FAQ drafts</button>
           </form>
           <div id="knowledge-import-draft-list" class="record-list import-draft-list"></div>
           <form id="knowledge-form" class="grid-form">

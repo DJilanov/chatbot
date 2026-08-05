@@ -2,6 +2,7 @@ import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import type {
   KnowledgeCsvImportResponse,
+  KnowledgeFaqImportResponse,
   KnowledgeImportDraft,
   KnowledgeIntent,
   LocaleCode,
@@ -10,9 +11,11 @@ import type {
 
 const MAX_IMPORT_BYTES = 512 * 1024;
 const MAX_CSV_IMPORT_BYTES = 96 * 1024;
+const MAX_FAQ_IMPORT_BYTES = 96 * 1024;
 const MAX_IMPORTED_ANSWER_CHARS = 2000;
 const MAX_REDIRECTS = 3;
 const MAX_CSV_DRAFTS = 100;
+const MAX_FAQ_DRAFTS = 100;
 
 export class KnowledgeImportFailure extends Error {
   constructor(
@@ -76,6 +79,36 @@ export function importKnowledgeFromCsv(input: {
   }
 
   return { drafts, skippedRows };
+}
+
+export function importKnowledgeFromFaqText(input: {
+  text: unknown;
+  locale: LocaleCode;
+  intent: KnowledgeIntent;
+}): KnowledgeFaqImportResponse {
+  const text = normalizeFaqImportText(input.text);
+  const blocks = parseFaqBlocks(text);
+  const drafts: KnowledgeImportDraft[] = [];
+  let skippedBlocks = 0;
+
+  for (const [index, block] of blocks.entries()) {
+    if (drafts.length >= MAX_FAQ_DRAFTS) {
+      skippedBlocks += 1;
+      continue;
+    }
+    const draft = faqBlockToDraft(block, input.locale, input.intent, index + 1);
+    if (!draft) {
+      skippedBlocks += 1;
+      continue;
+    }
+    drafts.push(draft);
+  }
+
+  if (drafts.length === 0) {
+    throw new KnowledgeImportFailure(422, 'faq_no_drafts', 'FAQ text did not contain usable question and answer blocks');
+  }
+
+  return { drafts, skippedBlocks };
 }
 
 export function normalizeKnowledgeImportUrl(value: unknown): URL {
@@ -480,6 +513,139 @@ function parseCsv(content: string): string[][] {
     rows.push(row);
   }
   return rows;
+}
+
+interface FaqBlock {
+  question: string;
+  answer: string;
+}
+
+type FaqMarker = { kind: 'question' | 'answer'; text: string };
+
+function normalizeFaqImportText(value: unknown): string {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new KnowledgeImportFailure(400, 'faq_text_required', 'FAQ text is required');
+  }
+  if (Buffer.byteLength(value, 'utf8') > MAX_FAQ_IMPORT_BYTES) {
+    throw new KnowledgeImportFailure(413, 'faq_text_too_large', 'FAQ text is too large');
+  }
+  return value.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+}
+
+function parseFaqBlocks(text: string): FaqBlock[] {
+  const markedBlocks = parseMarkedFaqBlocks(text);
+  if (markedBlocks.length > 0) return markedBlocks;
+  return parseLooseFaqBlocks(text);
+}
+
+function parseMarkedFaqBlocks(text: string): FaqBlock[] {
+  const blocks: FaqBlock[] = [];
+  let current: { question: string[]; answer: string[] } | null = null;
+  let mode: 'question' | 'answer' | null = null;
+  let hasMarker = false;
+
+  const finishCurrent = (): void => {
+    if (!current) return;
+    blocks.push({
+      question: cleanImportedText(current.question.join(' '), 4000),
+      answer: cleanImportedText(current.answer.join('\n'), 4000),
+    });
+    current = null;
+    mode = null;
+  };
+
+  for (const rawLine of text.split('\n')) {
+    const marker = faqMarker(rawLine);
+    if (marker) {
+      hasMarker = true;
+      if (marker.kind === 'question') {
+        finishCurrent();
+        current = { question: [], answer: [] };
+        if (marker.text) current.question.push(marker.text);
+        mode = 'question';
+      } else {
+        if (!current) current = { question: [], answer: [] };
+        if (marker.text) current.answer.push(marker.text);
+        mode = 'answer';
+      }
+      continue;
+    }
+
+    const line = rawLine.trim();
+    if (!current || !line) continue;
+    if (mode === 'answer') {
+      current.answer.push(line);
+    } else {
+      current.question.push(line);
+    }
+  }
+
+  finishCurrent();
+  return hasMarker ? blocks : [];
+}
+
+function faqMarker(line: string): FaqMarker | null {
+  const match = line.trim().match(/^([A-Za-zА-Яа-я]+)\s*[:.)-]\s*(.*)$/u);
+  if (!match) return null;
+  const label = match[1]?.toLocaleLowerCase('bg-BG') ?? '';
+  const text = match[2]?.trim() ?? '';
+  if (['q', 'question', 'въпрос', 'в'].includes(label)) return { kind: 'question', text };
+  if (['a', 'answer', 'отговор', 'о'].includes(label)) return { kind: 'answer', text };
+  return null;
+}
+
+function parseLooseFaqBlocks(text: string): FaqBlock[] {
+  return text
+    .split(/\n{2,}/)
+    .map((block) => {
+      const lines = block
+        .split('\n')
+        .map((line) => cleanImportedText(line, 4000))
+        .filter(Boolean);
+      const question = lines[0] ?? '';
+      const answer = lines.length > 1 ? lines.slice(1).join('\n') : block;
+      return {
+        question,
+        answer: cleanImportedText(answer, 4000),
+      };
+    })
+    .filter((block) => block.question || block.answer);
+}
+
+function faqBlockToDraft(
+  block: FaqBlock,
+  locale: LocaleCode,
+  intent: KnowledgeIntent,
+  blockNumber: number,
+): KnowledgeImportDraft | null {
+  const answerText = cleanImportedText(block.answer, MAX_IMPORTED_ANSWER_CHARS);
+  if (answerText.length < 10) return null;
+
+  const title = sanitizeSingleLine(block.question || answerText.split('\n')[0] || `FAQ block ${blockNumber}`, 160);
+  const answer: LocalizedText = {};
+  answer[locale] = answerText;
+
+  return {
+    sourceUrl: `faq:block-${blockNumber}`,
+    title,
+    locale,
+    intent,
+    keywords: extractKeywords(`${title} ${answerText}`, 12),
+    answer,
+    characterCount: answerText.length,
+  };
+}
+
+function cleanImportedText(value: string, maxLength: number): string {
+  return value
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .split('\n')
+    .map((line) => line.replace(/[ \t]+/g, ' ').trim())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+    .slice(0, maxLength);
 }
 
 function extractKeywords(value: string, maxKeywords: number): string[] {

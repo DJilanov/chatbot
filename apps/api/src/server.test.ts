@@ -9,6 +9,7 @@ import { createAiProvider } from '@chatbot/ai';
 import type {
   ActionLog,
   KnowledgeCsvImportResponse,
+  KnowledgeFaqImportResponse,
   Lead,
   MissingAnswerItem,
   Organization,
@@ -28,6 +29,7 @@ import { NullEmailProvider, ResendEmailProvider, type EmailProvider } from './em
 import {
   createKnowledgeImportDraft,
   importKnowledgeFromCsv,
+  importKnowledgeFromFaqText,
   isPrivateAddress,
   normalizeKnowledgeImportUrl,
 } from './knowledge-import.js';
@@ -207,6 +209,32 @@ test('knowledge CSV import creates localized drafts from spreadsheet rows', () =
   assert.equal(result.drafts[1]?.intent, 'warranty_policy');
 });
 
+test('knowledge FAQ import creates localized drafts from pasted question blocks', () => {
+  const result = importKnowledgeFromFaqText({
+    locale: 'bg',
+    intent: 'custom',
+    text: [
+      'Въпрос: Как работи доставката?',
+      'Отговор: Доставяме с куриер до два работни дни за всички градове.',
+      '',
+      'Q: What is the warranty?',
+      'A: Warranty requests are reviewed by the team before the product is returned.',
+      '',
+      'Въпрос: Празен',
+      'Отговор: -',
+    ].join('\n'),
+  });
+
+  assert.equal(result.drafts.length, 2);
+  assert.equal(result.skippedBlocks, 1);
+  assert.equal(result.drafts[0]?.sourceUrl, 'faq:block-1');
+  assert.equal(result.drafts[0]?.title, 'Как работи доставката?');
+  assert.equal(result.drafts[0]?.intent, 'custom');
+  assert.equal(result.drafts[0]?.answer.bg, 'Доставяме с куриер до два работни дни за всички градове.');
+  assert.ok(result.drafts[0]?.keywords.includes('доставяме'));
+  assert.equal(result.drafts[1]?.title, 'What is the warranty?');
+});
+
 test('admin can import CSV knowledge drafts', async () => {
   const api = await createTestApi();
   try {
@@ -228,6 +256,36 @@ test('admin can import CSV knowledge drafts', async () => {
     assert.equal(imported.drafts[0]?.title, 'Как работи поддръжката?');
     assert.equal(imported.drafts[0]?.intent, 'support');
     assert.equal(imported.drafts[0]?.answer.bg, 'Пишете ни и ще ви върнем отговор в работен ден.');
+
+    const data = await api.store.read();
+    assert.equal(data.knowledgeEntries.length, 0);
+  } finally {
+    await api.close();
+  }
+});
+
+test('admin can import FAQ knowledge drafts', async () => {
+  const api = await createTestApi();
+  try {
+    const response = await fetch(`${api.url}/admin/sites/site_test/knowledge/import-faq`, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer test-token',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        locale: 'bg',
+        intent: 'delivery_policy',
+        text: ['Въпрос: Как работи доставката?', 'Отговор: Доставката се потвърждава от нашия екип.'].join('\n'),
+      }),
+    });
+    assert.equal(response.status, 200);
+    const imported = await json<KnowledgeFaqImportResponse>(response);
+    assert.equal(imported.drafts.length, 1);
+    assert.equal(imported.skippedBlocks, 0);
+    assert.equal(imported.drafts[0]?.title, 'Как работи доставката?');
+    assert.equal(imported.drafts[0]?.intent, 'delivery_policy');
+    assert.equal(imported.drafts[0]?.answer.bg, 'Доставката се потвърждава от нашия екип.');
 
     const data = await api.store.read();
     assert.equal(data.knowledgeEntries.length, 0);

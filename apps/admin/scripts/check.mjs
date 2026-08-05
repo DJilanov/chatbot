@@ -17,10 +17,12 @@ for (const text of [
   'addKnowledge',
   'importKnowledgeUrl',
   'importKnowledgeCsv',
+  'importKnowledgeFaq',
   'renderKnowledgeImportDrafts',
   'applyKnowledgeDraft',
   '/knowledge/import-url',
   '/knowledge/import-csv',
+  '/knowledge/import-faq',
   'renderMissingAnswers',
   'draftKnowledgeFromMissingAnswer',
   'reviewMissingAnswer',
@@ -33,6 +35,9 @@ for (const text of [
   'renderUsers',
   'renderIdentity',
   'clearWorkspace',
+  'detectAdminLocale',
+  'applyAdminLocale',
+  'adminTranslations',
   '/admin/me',
 ]) {
   if (!script.includes(text)) throw new Error(`Missing admin behavior: ${text}`);
@@ -41,12 +46,15 @@ for (const text of [
 const html = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
 for (const text of [
   'Access token',
+  'admin-language',
   'identity-summary',
   'sign-out-button',
   'Website page URL',
   'knowledge-import-form',
   'CSV knowledge rows',
   'knowledge-csv-import-form',
+  'Pasted FAQ or policy text',
+  'knowledge-faq-import-form',
   'knowledge-import-draft-list',
   'Missing answers',
   'missing-answer-list',

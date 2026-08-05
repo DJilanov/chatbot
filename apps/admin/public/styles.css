@@ -117,6 +117,11 @@ h2 {
   text-align: right;
 }
 
+.language-switch {
+  width: min(220px, 100%);
+  justify-self: end;
+}
+
 label {
   display: grid;
   gap: 6px;
@@ -409,6 +414,10 @@ progress {
 
   .identity-summary {
     text-align: left;
+  }
+
+  .language-switch {
+    justify-self: stretch;
   }
 
   .record-actions,

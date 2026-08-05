@@ -305,6 +305,11 @@ export interface KnowledgeCsvImportResponse {
   skippedRows: number;
 }
 
+export interface KnowledgeFaqImportResponse {
+  drafts: KnowledgeImportDraft[];
+  skippedBlocks: number;
+}
+
 export interface ChatMessage {
   id: string;
   conversationId: string;

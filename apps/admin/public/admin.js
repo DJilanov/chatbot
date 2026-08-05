@@ -4,10 +4,13 @@ const localDefaultApiUrl =
   window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:8787'
     : window.location.origin;
+const adminLocaleKey = 'admin:locale';
+const textNodeOriginals = new WeakMap();
 
 const state = {
   apiUrl: localStorage.getItem('admin:apiUrl') || localDefaultApiUrl,
   token: localStorage.getItem('admin:token') || localDefaultToken,
+  locale: normalizeAdminLocale(localStorage.getItem(adminLocaleKey) || detectAdminLocale()),
   identity: null,
   organizations: [],
   sites: [],
@@ -18,6 +21,256 @@ const state = {
 };
 
 const qs = (selector) => document.querySelector(selector);
+
+const adminTranslations = {
+  bg: {
+    'Assistant SaaS Admin': 'Админ | Assistant SaaS',
+    'Admin console': 'Админ конзола',
+    Language: 'Език',
+    Bulgarian: 'Български',
+    English: 'Английски',
+    'API URL': 'API адрес',
+    'Access token': 'Токен за достъп',
+    Connect: 'Свържи',
+    'Sign out': 'Изход',
+    'Not connected': 'Няма връзка',
+    'Connect to the API to start.': 'Свържете се с API, за да започнете.',
+    'Create organization': 'Създай организация',
+    'Organization name': 'Име на организация',
+    'Create site': 'Създай сайт',
+    'Site name': 'Име на сайт',
+    Sites: 'Сайтове',
+    'Knowledge entries': 'Записи знания',
+    'Monthly conversations': 'Месечни разговори',
+    'Monthly messages': 'Месечни съобщения',
+    'Monthly leads': 'Месечни запитвания',
+    'Site configuration': 'Настройки на сайта',
+    Refresh: 'Обнови',
+    'Assistant title': 'Заглавие на асистента',
+    Subtitle: 'Подзаглавие',
+    'Assistant name': 'Име на асистента',
+    'Primary color': 'Основен цвят',
+    'Contact email': 'Имейл за контакт',
+    'Contact phone': 'Телефон за контакт',
+    'Lead webhook URL': 'Webhook адрес за запитвания',
+    'Support webhook URL': 'Webhook адрес за поддръжка',
+    'Welcome message': 'Приветствено съобщение',
+    'Fallback message': 'Резервен отговор',
+    'Lead capture prompt': 'Подкана за контакт',
+    'Save configuration': 'Запази настройките',
+    'Knowledge base': 'База знания',
+    'Website page URL': 'Адрес на страница',
+    Intent: 'Намерение',
+    'Import draft': 'Импортирай чернова',
+    'CSV knowledge rows': 'CSV редове за знания',
+    'Default language': 'Език по подразбиране',
+    'Default intent': 'Намерение по подразбиране',
+    'Import CSV drafts': 'Импортирай CSV чернови',
+    'Pasted FAQ or policy text': 'Поставен FAQ или текст с правила',
+    'Import FAQ drafts': 'Импортирай FAQ чернови',
+    Title: 'Заглавие',
+    Keywords: 'Ключови думи',
+    'English answer': 'Отговор на английски',
+    'Bulgarian answer': 'Отговор на български',
+    'Add knowledge': 'Добави знание',
+    'Missing answers': 'Липсващи отговори',
+    Conversations: 'Разговори',
+    Messages: 'Съобщения',
+    Leads: 'Запитвания',
+    Handoffs: 'Прехвърляния',
+    Billing: 'Абонамент',
+    Plan: 'План',
+    Status: 'Статус',
+    Trialing: 'Пробен период',
+    Active: 'Активен',
+    'Past due': 'Просрочен',
+    Paused: 'Пауза',
+    Canceled: 'Отказан',
+    'Trial ends at': 'Пробният период приключва',
+    'Period end': 'Край на периода',
+    'Save billing': 'Запази абонамента',
+    Users: 'Потребители',
+    Name: 'Име',
+    Email: 'Имейл',
+    Role: 'Роля',
+    Owner: 'Собственик',
+    Admin: 'Админ',
+    Support: 'Поддръжка',
+    Viewer: 'Наблюдател',
+    'Human handoff': 'Прехвърляне към човек',
+    'Create user': 'Създай потребител',
+    Privacy: 'Поверителност',
+    'Export JSON': 'Експорт JSON',
+    Phone: 'Телефон',
+    'Visitor ID': 'ID на посетител',
+    'Conversation ID': 'ID на разговор',
+    Reason: 'Причина',
+    'Erase subject': 'Изтрий субект',
+    'Run retention': 'Пусни retention',
+    'Recent leads': 'Последни запитвания',
+    'Export CSV': 'Експорт CSV',
+    'Support queue': 'Опашка поддръжка',
+    'Action audit': 'Одит на действия',
+    'Paste bootstrap or user token': 'Поставете bootstrap или потребителски токен',
+    'Customer requested erasure': 'Клиентът поиска изтриване',
+    'pricing, quote, cost': 'цени, оферта, стойност',
+    'Question: How does delivery work?\nAnswer: We deliver within two business days.\n\nQuestion: What is the warranty?\nAnswer: Warranty requests are reviewed by our team.':
+      'Въпрос: Как работи доставката?\nОтговор: Доставяме до два работни дни.\n\nВъпрос: Каква е гаранцията?\nОтговор: Гаранционните заявки се преглеждат от нашия екип.',
+    'Connected.': 'Свързано.',
+    Connected: 'Свързано',
+    'Connected as bootstrap admin': 'Свързано като bootstrap админ',
+    'Connected as {name} ({role}) - {email}': 'Свързано като {name} ({role}) - {email}',
+    'Configuration saved.': 'Настройките са запазени.',
+    'Billing saved.': 'Абонаментът е запазен.',
+    'User created.': 'Потребителят е създаден.',
+    'Knowledge entry added.': 'Знанието е добавено.',
+    'Knowledge draft imported from {sourceUrl}. Review it before saving.':
+      'Чернова е импортирана от {sourceUrl}. Прегледайте я преди запис.',
+    'Imported {count} CSV drafts. Review a draft before saving.':
+      'Импортирани са {count} CSV чернови. Прегледайте чернова преди запис.',
+    'Imported {count} FAQ drafts. Review a draft before saving.':
+      'Импортирани са {count} FAQ чернови. Прегледайте чернова преди запис.',
+    'Knowledge draft prepared. Add the approved answer before saving.':
+      'Черновата е подготвена. Добавете одобрен отговор преди запис.',
+    'Knowledge draft loaded. Review it before saving.': 'Черновата е заредена. Прегледайте я преди запис.',
+    'Missing answer marked reviewed.': 'Липсващият отговор е маркиран като прегледан.',
+    'User saved.': 'Потребителят е запазен.',
+    'Lead status saved.': 'Статусът на запитването е запазен.',
+    'Support ticket status saved.': 'Статусът на тикета е запазен.',
+    'Lead export downloaded.': 'CSV експортът на запитвания е изтеглен.',
+    'Site data export downloaded.': 'Експортът на данни за сайта е изтеглен.',
+    'Privacy erasure completed.': 'Изтриването по поверителност е завършено.',
+    'Retention cleanup completed.': 'Retention почистването е завършено.',
+    'Signed out.': 'Излязохте от профила.',
+    'No assistant reply recorded.': 'Няма записан отговор от асистента.',
+    'No missing answers to review.': 'Няма липсващи отговори за преглед.',
+    'No users yet.': 'Все още няма потребители.',
+    'No leads yet.': 'Все още няма запитвания.',
+    'No support tickets yet.': 'Все още няма тикети за поддръжка.',
+    'No actions yet.': 'Все още няма действия.',
+    'CSV rows were skipped.': 'CSV реда бяха пропуснати.',
+    'FAQ blocks were skipped.': 'FAQ блока бяха пропуснати.',
+    'Use draft': 'Използвай чернова',
+    'Draft knowledge': 'Чернова знание',
+    'Mark reviewed': 'Маркирай прегледано',
+    'Resolution note': 'Бележка за решение',
+    Disabled: 'Деактивиран',
+    Save: 'Запази',
+    Lead: 'Запитване',
+    'Shown once. If email notifications are configured, an invitation email was also sent.':
+      'Показва се еднократно. Ако имейл известията са настроени, поканата е изпратена и по имейл.',
+    unavailable: 'недостъпно',
+    'used / unlimited': 'използвани / без лимит',
+    'used /': 'използвани /',
+    limit: 'лимит',
+    entries: 'записа',
+    entry: 'запис',
+    open: 'отворени',
+    users: 'потребители',
+    user: 'потребител',
+    'company info': 'информация за компанията',
+    services: 'услуги',
+    pricing: 'цени',
+    'delivery policy': 'доставка',
+    'returns policy': 'връщане',
+    'warranty policy': 'гаранция',
+    'payment policy': 'плащане',
+    'invoice policy': 'фактури',
+    support: 'поддръжка',
+    'human handoff': 'прехвърляне към човек',
+    custom: 'друго',
+    owner: 'собственик',
+    admin: 'админ',
+    viewer: 'наблюдател',
+    new: 'нов',
+    contacted: 'контактуван',
+    qualified: 'квалифициран',
+    won: 'спечелен',
+    lost: 'загубен',
+    spam: 'спам',
+    waiting_customer: 'чака клиент',
+    waiting_staff: 'чака екип',
+    resolved: 'решен',
+    blocked: 'блокиран',
+    trialing: 'пробен',
+    active: 'активен',
+    past_due: 'просрочен',
+    paused: 'пауза',
+    canceled: 'отказан',
+    fallback: 'fallback',
+    negative_feedback: 'негативна оценка',
+    failed_action: 'неуспешно действие',
+    answered: 'отговорено',
+    pending_customer: 'чака клиент',
+    pending_staff: 'чака екип',
+    completed: 'завършено',
+    failed: 'неуспешно',
+    deterministic: 'детерминиран',
+    ai: 'AI',
+    customer_click: 'клик от клиент',
+    system: 'система',
+  },
+};
+
+function normalizeAdminLocale(value) {
+  return value === 'en' ? 'en' : 'bg';
+}
+
+function detectAdminLocale() {
+  const languages = navigator.languages?.length ? navigator.languages : [navigator.language];
+  return languages.some((language) => String(language || '').toLowerCase().startsWith('bg')) ? 'bg' : 'en';
+}
+
+function t(key, values = {}) {
+  const dictionary = adminTranslations[state.locale] || {};
+  const template = dictionary[key] || key;
+  return Object.entries(values).reduce(
+    (text, [name, value]) => text.replaceAll(`{${name}}`, String(value ?? '')),
+    template,
+  );
+}
+
+function translatedLabel(value) {
+  return t(String(value || '').replace(/_/g, ' '));
+}
+
+function countLabel(count, singular, plural, bgPlural) {
+  if (state.locale === 'bg') return `${count} ${bgPlural}`;
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function dateTime(value) {
+  return new Date(value).toLocaleString(state.locale === 'bg' ? 'bg-BG' : 'en-US');
+}
+
+function applyAdminLocale() {
+  document.documentElement.lang = state.locale;
+  document.title = t('Assistant SaaS Admin');
+  qs('#admin-language').value = state.locale;
+  translateTextNodes(document.body);
+  document.querySelectorAll('[placeholder]').forEach((node) => {
+    const original = node.dataset.originalPlaceholder || node.getAttribute('placeholder') || '';
+    node.dataset.originalPlaceholder = original;
+    node.setAttribute('placeholder', t(original));
+  });
+}
+
+function translateTextNodes(root) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  for (const node of nodes) {
+    const parent = node.parentElement;
+    if (!parent || ['SCRIPT', 'STYLE', 'CODE', 'PRE'].includes(parent.tagName)) continue;
+    const value = node.nodeValue || '';
+    const match = value.match(/^(\s*)([\s\S]*?)(\s*)$/);
+    const text = match?.[2] || '';
+    if (!text.trim()) continue;
+    const original = textNodeOriginals.get(node) || text;
+    textNodeOriginals.set(node, original);
+    node.nodeValue = `${match?.[1] || ''}${t(original)}${match?.[3] || ''}`;
+  }
+}
 
 function headers() {
   return {
@@ -39,7 +292,7 @@ async function api(path, options = {}) {
 
 function setStatus(message, kind = '') {
   const node = qs('#status');
-  node.textContent = message;
+  node.textContent = t(message);
   node.className = `status ${kind}`.trim();
 }
 
@@ -71,7 +324,7 @@ async function loadAll() {
   renderBillingPlans();
   renderSites();
   await loadSelectedSite();
-  setStatus('Connected.', 'ok');
+  setStatus(t('Connected.'), 'ok');
 }
 
 function renderIdentity() {
@@ -79,19 +332,23 @@ function renderIdentity() {
   const signOut = qs('#sign-out-button');
   signOut.hidden = !state.token;
   if (!state.identity) {
-    summary.textContent = 'Not connected';
+    summary.textContent = t('Not connected');
     return;
   }
   if (state.identity.kind === 'bootstrap') {
-    summary.textContent = 'Connected as bootstrap admin';
+    summary.textContent = t('Connected as bootstrap admin');
     return;
   }
   const user = state.identity.user;
   if (!user) {
-    summary.textContent = 'Connected';
+    summary.textContent = t('Connected');
     return;
   }
-  summary.textContent = `Connected as ${user.name} (${user.role}) - ${user.email}`;
+  summary.textContent = t('Connected as {name} ({role}) - {email}', {
+    name: user.name,
+    role: translatedLabel(user.role),
+    email: user.email,
+  });
 }
 
 function clearWorkspace() {
@@ -107,12 +364,12 @@ function clearWorkspace() {
   qs('#organization-select').innerHTML = '';
   qs('#billing-plan-select').innerHTML = '';
   qs('#site-list').innerHTML = '';
-  qs('#knowledge-count').textContent = '0 entries';
+  qs('#knowledge-count').textContent = countLabel(0, 'entry', 'entries', t('entries'));
   qs('#knowledge-list').innerHTML = '';
   qs('#knowledge-import-draft-list').innerHTML = '';
-  qs('#missing-answer-count').textContent = '0 open';
+  qs('#missing-answer-count').textContent = countLabel(0, 'open', 'open', t('open'));
   qs('#missing-answer-list').innerHTML = '';
-  qs('#user-count').textContent = '0 users';
+  qs('#user-count').textContent = countLabel(0, 'user', 'users', t('users'));
   qs('#user-list').innerHTML = '';
   qs('#created-token').hidden = true;
   qs('#lead-list').innerHTML = '';
@@ -198,6 +455,7 @@ function fillConfig(site) {
   const form = qs('#config-form');
   const importForm = qs('#knowledge-import-form');
   const csvImportForm = qs('#knowledge-csv-import-form');
+  const faqImportForm = qs('#knowledge-faq-import-form');
   form.elements.title.value = site.config.branding.title || '';
   form.elements.subtitle.value = site.config.branding.subtitle || '';
   form.elements.assistantName.value = site.config.branding.assistantName || '';
@@ -211,17 +469,18 @@ function fillConfig(site) {
   form.elements.leadCapturePrompt.value = site.config.leadCapturePrompt || '';
   if (importForm) importForm.elements.locale.value = site.config.defaultLocale === 'en' ? 'en' : 'bg';
   if (csvImportForm) csvImportForm.elements.locale.value = site.config.defaultLocale === 'en' ? 'en' : 'bg';
+  if (faqImportForm) faqImportForm.elements.locale.value = site.config.defaultLocale === 'en' ? 'en' : 'bg';
 }
 
 function renderKnowledge(entries) {
-  qs('#knowledge-count').textContent = `${entries.length} entries`;
+  qs('#knowledge-count').textContent = countLabel(entries.length, 'entry', 'entries', t('entries'));
   qs('#knowledge-list').innerHTML = entries
     .map(
       (entry) => `
         <article class="record">
           <strong>${escapeHtml(entry.title)}</strong>
-          <p>${escapeHtml(entry.intent)} | ${escapeHtml(entry.keywords.join(', '))}</p>
-          <p>${escapeHtml(entry.answer.en || entry.answer.bg || '')}</p>
+          <p>${escapeHtml(translatedLabel(entry.intent))} | ${escapeHtml(entry.keywords.join(', '))}</p>
+          <p>${escapeHtml(localizedAnswer(entry.answer))}</p>
         </article>
       `,
     )
@@ -230,7 +489,7 @@ function renderKnowledge(entries) {
 
 function renderMissingAnswers(items) {
   state.missingAnswers = items;
-  qs('#missing-answer-count').textContent = `${items.length} open`;
+  qs('#missing-answer-count').textContent = countLabel(items.length, 'open', 'open', t('open'));
   const list = qs('#missing-answer-list');
   list.innerHTML =
     items
@@ -240,19 +499,19 @@ function renderMissingAnswers(items) {
           <article class="record">
             <div class="record-heading">
               <strong>${escapeHtml(item.question || item.action)}</strong>
-              <span class="pill">${escapeHtml(item.trigger.replace(/_/g, ' '))} | ${escapeHtml(item.locale)}</span>
+              <span class="pill">${escapeHtml(translatedLabel(item.trigger))} | ${escapeHtml(item.locale)}</span>
             </div>
-            <p>${escapeHtml(item.assistantReply || 'No assistant reply recorded.')}</p>
+            <p>${escapeHtml(item.assistantReply || t('No assistant reply recorded.'))}</p>
             <p>${escapeHtml(missingAnswerMeta(item))}</p>
             <div class="record-actions">
-              <button type="button" data-draft-missing-answer="${escapeHtml(item.id)}">Draft knowledge</button>
-              <input data-review-note="${escapeHtml(item.id)}" placeholder="Resolution note" />
-              <button class="secondary-button" type="button" data-review-missing-answer="${escapeHtml(item.id)}">Mark reviewed</button>
+              <button type="button" data-draft-missing-answer="${escapeHtml(item.id)}">${escapeHtml(t('Draft knowledge'))}</button>
+              <input data-review-note="${escapeHtml(item.id)}" placeholder="${escapeHtml(t('Resolution note'))}" />
+              <button class="secondary-button" type="button" data-review-missing-answer="${escapeHtml(item.id)}">${escapeHtml(t('Mark reviewed'))}</button>
             </div>
           </article>
         `,
       )
-      .join('') || '<p>No missing answers to review.</p>';
+      .join('') || `<p>${escapeHtml(t('No missing answers to review.'))}</p>`;
   list.querySelectorAll('button[data-draft-missing-answer]').forEach((button) => {
     button.addEventListener('click', () => draftKnowledgeFromMissingAnswer(button.dataset.draftMissingAnswer));
   });
@@ -274,7 +533,7 @@ function renderAnalytics(summary) {
 
 function renderBilling(summary) {
   if (summary.unavailable) {
-    qs('#billing-status').textContent = 'unavailable';
+    qs('#billing-status').textContent = t('unavailable');
     qs('#billing-usage').innerHTML = `<p>${escapeHtml(summary.message)}</p>`;
     qs('#billing-form').hidden = true;
     return;
@@ -291,7 +550,7 @@ function renderBilling(summary) {
       (metric) => `
         <article class="usage-row ${metric.exceeded ? 'exceeded' : ''}">
           <div>
-            <strong>${escapeHtml(metric.label)}</strong>
+            <strong>${escapeHtml(t(metric.label))}</strong>
             <span>${escapeHtml(limitText(metric))}</span>
           </div>
           <progress value="${escapeHtml(progressValue(metric))}" max="100"></progress>
@@ -305,14 +564,14 @@ function renderUsers(result) {
   const form = qs('#user-form');
   const output = qs('#created-token');
   if (result.unavailable) {
-    qs('#user-count').textContent = 'unavailable';
+    qs('#user-count').textContent = t('unavailable');
     form.hidden = true;
     output.hidden = true;
     qs('#user-list').innerHTML = `<p>${escapeHtml(result.message)}</p>`;
     return;
   }
   form.hidden = false;
-  qs('#user-count').textContent = `${result.length} users`;
+  qs('#user-count').textContent = countLabel(result.length, 'user', 'users', t('users'));
   qs('#user-list').innerHTML =
     result
       .map(
@@ -329,14 +588,14 @@ function renderUsers(result) {
               </select>
               <label class="checkbox-row">
                 <input type="checkbox" data-user-disabled="${escapeHtml(user.id)}" ${user.disabled ? 'checked' : ''} />
-                Disabled
+                ${escapeHtml(t('Disabled'))}
               </label>
-              <button type="button" data-save-user="${escapeHtml(user.id)}">Save</button>
+              <button type="button" data-save-user="${escapeHtml(user.id)}">${escapeHtml(t('Save'))}</button>
             </div>
           </article>
         `,
       )
-      .join('') || '<p>No users yet.</p>';
+      .join('') || `<p>${escapeHtml(t('No users yet.'))}</p>`;
   qs('#user-list').querySelectorAll('button[data-save-user]').forEach((button) => {
     button.addEventListener('click', () => {
       const userId = button.dataset.saveUser;
@@ -359,21 +618,21 @@ function renderLeads(leads) {
         (lead) => `
           <article class="record">
             <div class="record-heading">
-              <strong>${escapeHtml(lead.email || lead.phone || lead.name || 'Lead')}</strong>
-              <span class="pill">${escapeHtml(lead.status)}</span>
+              <strong>${escapeHtml(lead.email || lead.phone || lead.name || t('Lead'))}</strong>
+              <span class="pill">${escapeHtml(translatedLabel(lead.status))}</span>
             </div>
             <p>${escapeHtml(lead.message)}</p>
-            <p>${escapeHtml(new Date(lead.createdAt).toLocaleString())}</p>
+            <p>${escapeHtml(dateTime(lead.createdAt))}</p>
             <div class="record-actions">
               <select data-lead-status="${escapeHtml(lead.id)}">
                 ${leadStatusOptions(lead.status)}
               </select>
-              <button type="button" data-save-lead="${escapeHtml(lead.id)}">Save</button>
+              <button type="button" data-save-lead="${escapeHtml(lead.id)}">${escapeHtml(t('Save'))}</button>
             </div>
           </article>
         `,
       )
-      .join('') || '<p>No leads yet.</p>';
+      .join('') || `<p>${escapeHtml(t('No leads yet.'))}</p>`;
   list.querySelectorAll('button[data-save-lead]').forEach((button) => {
     button.addEventListener('click', () => {
       const leadId = button.dataset.saveLead;
@@ -396,20 +655,20 @@ function renderSupportTickets(tickets) {
           <article class="record">
             <div class="record-heading">
               <strong>${escapeHtml(ticket.customerEmail || ticket.customerPhone || ticket.reason)}</strong>
-              <span class="pill">${escapeHtml(ticket.status)}</span>
+              <span class="pill">${escapeHtml(translatedLabel(ticket.status))}</span>
             </div>
             <p>${escapeHtml(ticket.sourceText)}</p>
-            <p>${escapeHtml(new Date(ticket.createdAt).toLocaleString())}</p>
+            <p>${escapeHtml(dateTime(ticket.createdAt))}</p>
             <div class="record-actions">
               <select data-ticket-status="${escapeHtml(ticket.id)}">
                 ${supportStatusOptions(ticket.status)}
               </select>
-              <button type="button" data-save-ticket="${escapeHtml(ticket.id)}">Save</button>
+              <button type="button" data-save-ticket="${escapeHtml(ticket.id)}">${escapeHtml(t('Save'))}</button>
             </div>
           </article>
         `,
       )
-      .join('') || '<p>No support tickets yet.</p>';
+      .join('') || `<p>${escapeHtml(t('No support tickets yet.'))}</p>`;
   list.querySelectorAll('button[data-save-ticket]').forEach((button) => {
     button.addEventListener('click', () => {
       const ticketId = button.dataset.saveTicket;
@@ -429,13 +688,13 @@ function renderActions(actions) {
       .map(
         (action) => `
           <article class="record">
-            <strong>${escapeHtml(action.action)} | ${escapeHtml(action.status)}</strong>
+            <strong>${escapeHtml(action.action)} | ${escapeHtml(translatedLabel(action.status))}</strong>
             <p>${escapeHtml(action.sourceText || '-')}</p>
             <p>${escapeHtml(action.reply || '')}</p>
           </article>
         `,
       )
-      .join('') || '<p>No actions yet.</p>';
+      .join('') || `<p>${escapeHtml(t('No actions yet.'))}</p>`;
 }
 
 async function createOrganization(event) {
@@ -568,7 +827,7 @@ async function importKnowledgeUrl(event) {
   state.importDrafts = [draft];
   renderKnowledgeImportDrafts(state.importDrafts, 0);
   applyKnowledgeDraft(draft);
-  setStatus(`Knowledge draft imported from ${draft.sourceUrl}. Review it before saving.`, 'ok');
+  setStatus(t('Knowledge draft imported from {sourceUrl}. Review it before saving.', { sourceUrl: draft.sourceUrl }), 'ok');
 }
 
 async function importKnowledgeCsv(event) {
@@ -585,7 +844,24 @@ async function importKnowledgeCsv(event) {
   });
   state.importDrafts = response.drafts;
   renderKnowledgeImportDrafts(response.drafts, response.skippedRows);
-  setStatus(`Imported ${response.drafts.length} CSV drafts. Review a draft before saving.`, 'ok');
+  setStatus(t('Imported {count} CSV drafts. Review a draft before saving.', { count: response.drafts.length }), 'ok');
+}
+
+async function importKnowledgeFaq(event) {
+  event.preventDefault();
+  if (!state.selectedSiteId) return;
+  const values = formRecord(event.currentTarget);
+  const response = await api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/knowledge/import-faq`, {
+    method: 'POST',
+    body: JSON.stringify({
+      text: values.text,
+      locale: values.locale,
+      intent: values.intent,
+    }),
+  });
+  state.importDrafts = response.drafts;
+  renderKnowledgeImportDrafts(response.drafts, response.skippedBlocks, 'FAQ blocks were skipped.');
+  setStatus(t('Imported {count} FAQ drafts. Review a draft before saving.', { count: response.drafts.length }), 'ok');
 }
 
 function draftKnowledgeFromMissingAnswer(actionId) {
@@ -601,7 +877,7 @@ function draftKnowledgeFromMissingAnswer(actionId) {
   setStatus('Knowledge draft prepared. Add the approved answer before saving.', 'ok');
 }
 
-function renderKnowledgeImportDrafts(drafts, skippedRows) {
+function renderKnowledgeImportDrafts(drafts, skippedCount, skippedLabel = 'CSV rows were skipped.') {
   const list = qs('#knowledge-import-draft-list');
   list.innerHTML =
     drafts
@@ -610,19 +886,19 @@ function renderKnowledgeImportDrafts(drafts, skippedRows) {
           <article class="record">
             <div class="record-heading">
               <strong>${escapeHtml(draft.title)}</strong>
-              <span class="pill">${escapeHtml(draft.intent)} | ${escapeHtml(draft.locale)}</span>
+              <span class="pill">${escapeHtml(translatedLabel(draft.intent))} | ${escapeHtml(draft.locale)}</span>
             </div>
             <p>${escapeHtml(draft.keywords.join(', '))}</p>
             <p>${escapeHtml(draftPreview(draft))}</p>
             <div class="record-actions">
-              <button type="button" data-apply-knowledge-draft="${escapeHtml(index)}">Use draft</button>
+              <button type="button" data-apply-knowledge-draft="${escapeHtml(index)}">${escapeHtml(t('Use draft'))}</button>
             </div>
           </article>
         `,
       )
       .join('');
-  if (skippedRows) {
-    list.insertAdjacentHTML('beforeend', `<p>${escapeHtml(skippedRows)} CSV rows were skipped.</p>`);
+  if (skippedCount) {
+    list.insertAdjacentHTML('beforeend', `<p>${escapeHtml(`${skippedCount} ${t(skippedLabel)}`)}</p>`);
   }
   list.querySelectorAll('button[data-apply-knowledge-draft]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -769,16 +1045,21 @@ function roleOptions(selected) {
 
 function missingAnswerMeta(item) {
   const parts = [
-    `${item.status} / ${item.confidence}`,
+    `${translatedLabel(item.status)} / ${translatedLabel(item.confidence)}`,
     item.reason,
     item.pageUrl,
-    new Date(item.createdAt).toLocaleString(),
+    dateTime(item.createdAt),
   ];
   return parts.filter(Boolean).join(' | ');
 }
 
+function localizedAnswer(answer) {
+  if (state.locale === 'bg') return answer.bg || answer.en || '';
+  return answer.en || answer.bg || '';
+}
+
 function draftPreview(draft) {
-  return String(draft.answer?.bg || draft.answer?.en || '').slice(0, 220);
+  return localizedAnswer(draft.answer || {}).slice(0, 220);
 }
 
 function guessKnowledgeIntent(text) {
@@ -833,16 +1114,16 @@ function draftKeywords(text) {
 
 function optionHtml(value, selected) {
   const isSelected = value === selected ? ' selected' : '';
-  return `<option value="${escapeHtml(value)}"${isSelected}>${escapeHtml(value.replace(/_/g, ' '))}</option>`;
+  return `<option value="${escapeHtml(value)}"${isSelected}>${escapeHtml(translatedLabel(value))}</option>`;
 }
 
 function renderCreatedToken(response) {
   const output = qs('#created-token');
   output.hidden = false;
   output.innerHTML = `
-    <strong>${escapeHtml(response.user.email)} access token</strong>
+    <strong>${escapeHtml(response.user.email)} ${escapeHtml(t('Access token').toLowerCase())}</strong>
     <code>${escapeHtml(response.token)}</code>
-    <p>Shown once. If email notifications are configured, an invitation email was also sent.</p>
+    <p>${escapeHtml(t('Shown once. If email notifications are configured, an invitation email was also sent.'))}</p>
   `;
 }
 
@@ -868,8 +1149,8 @@ function downloadJson(filename, payload) {
 }
 
 function limitText(metric) {
-  if (metric.limit === null) return `${metric.used} used / unlimited`;
-  return `${metric.used} used / ${metric.limit} limit`;
+  if (metric.limit === null) return `${metric.used} ${t('used / unlimited')}`;
+  return `${metric.used} ${t('used /')} ${metric.limit} ${t('limit')}`;
 }
 
 function progressValue(metric) {
@@ -891,7 +1172,21 @@ function cssEscape(value) {
 
 qs('#api-url').value = state.apiUrl;
 qs('#admin-token').value = state.token;
+qs('#admin-language').value = state.locale;
+applyAdminLocale();
 renderIdentity();
+qs('#admin-language').addEventListener('change', (event) => {
+  state.locale = normalizeAdminLocale(event.currentTarget.value);
+  localStorage.setItem(adminLocaleKey, state.locale);
+  applyAdminLocale();
+  renderIdentity();
+  renderOrganizations();
+  renderBillingPlans();
+  renderSites();
+  if (state.selectedSiteId) {
+    void loadSelectedSite().catch((error) => setStatus(error.message, 'error'));
+  }
+});
 qs('#connection-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   state.apiUrl = qs('#api-url').value.replace(/\/+$/, '');
@@ -937,6 +1232,9 @@ qs('#knowledge-import-form').addEventListener('submit', (event) => {
 });
 qs('#knowledge-csv-import-form').addEventListener('submit', (event) => {
   void importKnowledgeCsv(event).catch((error) => setStatus(error.message, 'error'));
+});
+qs('#knowledge-faq-import-form').addEventListener('submit', (event) => {
+  void importKnowledgeFaq(event).catch((error) => setStatus(error.message, 'error'));
 });
 qs('#refresh-button').addEventListener('click', () => {
   void loadAll().catch((error) => setStatus(error.message, 'error'));
