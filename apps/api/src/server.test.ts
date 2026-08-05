@@ -9,6 +9,7 @@ import { createAiProvider } from '@chatbot/ai';
 import type {
   ActionLog,
   KnowledgeCsvImportResponse,
+  KnowledgeDocumentImportResponse,
   KnowledgeFaqImportResponse,
   Lead,
   MissingAnswerItem,
@@ -29,6 +30,7 @@ import { NullEmailProvider, ResendEmailProvider, type EmailProvider } from './em
 import {
   createKnowledgeImportDraft,
   importKnowledgeFromCsv,
+  importKnowledgeFromDocument,
   importKnowledgeFromFaqText,
   isPrivateAddress,
   normalizeKnowledgeImportUrl,
@@ -235,6 +237,25 @@ test('knowledge FAQ import creates localized drafts from pasted question blocks'
   assert.equal(result.drafts[1]?.title, 'What is the warranty?');
 });
 
+test('knowledge document import creates a draft from PDF text', async () => {
+  const result = await importKnowledgeFromDocument({
+    fileName: 'delivery-policy.pdf',
+    mimeType: 'application/pdf',
+    contentBase64: simpleTextPdf().toString('base64'),
+    locale: 'en',
+    intent: 'delivery_policy',
+  });
+
+  assert.equal(result.documentType, 'pdf');
+  assert.equal(result.fileName, 'delivery-policy.pdf');
+  assert.equal(result.drafts.length, 1);
+  assert.equal(result.drafts[0]?.sourceUrl, 'pdf:delivery-policy.pdf');
+  assert.equal(result.drafts[0]?.title, 'delivery-policy');
+  assert.equal(result.drafts[0]?.intent, 'delivery_policy');
+  assert.match(result.drafts[0]?.answer.en ?? '', /Delivery is confirmed within two business days/);
+  assert.ok(result.drafts[0]?.keywords.includes('delivery'));
+});
+
 test('admin can import CSV knowledge drafts', async () => {
   const api = await createTestApi();
   try {
@@ -286,6 +307,36 @@ test('admin can import FAQ knowledge drafts', async () => {
     assert.equal(imported.drafts[0]?.title, 'Как работи доставката?');
     assert.equal(imported.drafts[0]?.intent, 'delivery_policy');
     assert.equal(imported.drafts[0]?.answer.bg, 'Доставката се потвърждава от нашия екип.');
+
+    const data = await api.store.read();
+    assert.equal(data.knowledgeEntries.length, 0);
+  } finally {
+    await api.close();
+  }
+});
+
+test('admin can import PDF knowledge document drafts', async () => {
+  const api = await createTestApi();
+  try {
+    const response = await fetch(`${api.url}/admin/sites/site_test/knowledge/import-document`, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer test-token',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        fileName: 'delivery-policy.pdf',
+        mimeType: 'application/pdf',
+        contentBase64: simpleTextPdf().toString('base64'),
+        locale: 'en',
+        intent: 'delivery_policy',
+      }),
+    });
+    assert.equal(response.status, 200);
+    const imported = await json<KnowledgeDocumentImportResponse>(response);
+    assert.equal(imported.documentType, 'pdf');
+    assert.equal(imported.drafts.length, 1);
+    assert.equal(imported.drafts[0]?.answer.en?.trim(), 'Delivery is confirmed within two business days.');
 
     const data = await api.store.read();
     assert.equal(data.knowledgeEntries.length, 0);
@@ -1105,6 +1156,48 @@ async function readRequestJson(req: IncomingMessage): Promise<Record<string, unk
   assert.notEqual(parsed, null);
   assert.equal(Array.isArray(parsed), false);
   return parsed as Record<string, unknown>;
+}
+
+function simpleTextPdf(): Buffer {
+  return Buffer.from(
+    `%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 70 >>
+stream
+BT
+/F1 24 Tf
+100 700 Td
+(Delivery is confirmed within two business days.) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f
+0000000009 00000 n
+0000000058 00000 n
+0000000115 00000 n
+0000000241 00000 n
+0000000361 00000 n
+trailer
+<< /Root 1 0 R /Size 6 >>
+startxref
+431
+%%EOF`,
+    'utf8',
+  );
 }
 
 async function json<T>(response: Response): Promise<T> {

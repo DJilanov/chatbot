@@ -1,7 +1,11 @@
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
+import mammoth from 'mammoth';
+import { PDFParse } from 'pdf-parse';
 import type {
   KnowledgeCsvImportResponse,
+  KnowledgeDocumentImportKind,
+  KnowledgeDocumentImportResponse,
   KnowledgeFaqImportResponse,
   KnowledgeImportDraft,
   KnowledgeIntent,
@@ -12,6 +16,8 @@ import type {
 const MAX_IMPORT_BYTES = 512 * 1024;
 const MAX_CSV_IMPORT_BYTES = 96 * 1024;
 const MAX_FAQ_IMPORT_BYTES = 96 * 1024;
+const MAX_DOCUMENT_IMPORT_BYTES = 2 * 1024 * 1024;
+const MAX_DOCUMENT_EXTRACTED_CHARS = 32_000;
 const MAX_IMPORTED_ANSWER_CHARS = 2000;
 const MAX_REDIRECTS = 3;
 const MAX_CSV_DRAFTS = 100;
@@ -111,6 +117,44 @@ export function importKnowledgeFromFaqText(input: {
   return { drafts, skippedBlocks };
 }
 
+export async function importKnowledgeFromDocument(input: {
+  fileName: unknown;
+  contentBase64: unknown;
+  mimeType: unknown;
+  locale: LocaleCode;
+  intent: KnowledgeIntent;
+}): Promise<KnowledgeDocumentImportResponse> {
+  const fileName = normalizeDocumentFileName(input.fileName);
+  const documentType = detectDocumentImportKind(fileName, input.mimeType);
+  const buffer = decodeDocumentBase64(input.contentBase64);
+  assertDocumentSignature(buffer, documentType);
+
+  try {
+    const extracted = await extractDocumentText(buffer, documentType);
+    const text = cleanImportedText(extracted.text, MAX_DOCUMENT_EXTRACTED_CHARS);
+    const title = titleFromFileName(fileName, documentType);
+    const draft = createTextKnowledgeDraft(
+      `${documentType}:${fileName}`,
+      text,
+      input.locale,
+      input.intent,
+      title,
+      'document_content_empty',
+      'The document did not contain enough readable text',
+    );
+    return {
+      drafts: [draft],
+      skippedBlocks: 0,
+      documentType,
+      fileName,
+      warnings: extracted.warnings,
+    };
+  } catch (error) {
+    if (error instanceof KnowledgeImportFailure) throw error;
+    throw new KnowledgeImportFailure(422, 'document_extract_failed', 'Could not read text from that document');
+  }
+}
+
 export function normalizeKnowledgeImportUrl(value: unknown): URL {
   if (typeof value !== 'string') {
     throw new KnowledgeImportFailure(400, 'import_url_required', 'Website page URL is required');
@@ -147,11 +191,34 @@ export function createKnowledgeImportDraft(
   }
 
   const title = sanitizeSingleLine(titleOverride || extractTitle(rawContent) || extractHeading(rawContent) || sourceUrl.hostname, 160);
+  return createTextKnowledgeDraft(
+    sourceUrl.toString(),
+    text,
+    locale,
+    intent,
+    title,
+    'import_content_empty',
+    'The page did not contain enough readable text',
+  );
+}
+
+function createTextKnowledgeDraft(
+  sourceUrl: string,
+  text: string,
+  locale: LocaleCode,
+  intent: KnowledgeIntent,
+  title: string,
+  emptyCode: string,
+  emptyMessage: string,
+): KnowledgeImportDraft {
+  if (text.length < 20) {
+    throw new KnowledgeImportFailure(422, emptyCode, emptyMessage);
+  }
   const answer: LocalizedText = {};
   answer[locale] = text.slice(0, MAX_IMPORTED_ANSWER_CHARS);
 
   return {
-    sourceUrl: sourceUrl.toString(),
+    sourceUrl,
     title,
     locale,
     intent,
@@ -646,6 +713,82 @@ function cleanImportedText(value: string, maxLength: number): string {
     .replace(/\n{3,}/g, '\n\n')
     .trim()
     .slice(0, maxLength);
+}
+
+function normalizeDocumentFileName(value: unknown): string {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new KnowledgeImportFailure(400, 'document_file_name_required', 'Document file name is required');
+  }
+  const fileName = sanitizeSingleLine(value, 180).replace(/[\\/]/g, '');
+  if (!fileName) {
+    throw new KnowledgeImportFailure(400, 'document_file_name_required', 'Document file name is required');
+  }
+  return fileName;
+}
+
+function detectDocumentImportKind(fileName: string, mimeType: unknown): KnowledgeDocumentImportKind {
+  const normalizedName = fileName.toLowerCase();
+  const normalizedMimeType = typeof mimeType === 'string' ? mimeType.toLowerCase().trim() : '';
+  if (normalizedName.endsWith('.pdf') || normalizedMimeType === 'application/pdf') return 'pdf';
+  if (
+    normalizedName.endsWith('.docx') ||
+    normalizedMimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ) {
+    return 'docx';
+  }
+  throw new KnowledgeImportFailure(415, 'document_type_unsupported', 'Only PDF and DOCX documents can be imported');
+}
+
+function decodeDocumentBase64(value: unknown): Buffer {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new KnowledgeImportFailure(400, 'document_content_required', 'Document content is required');
+  }
+  const normalized = value.replace(/^data:[^;]+;base64,/i, '').replace(/\s+/g, '');
+  if (!normalized || normalized.length % 4 !== 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(normalized)) {
+    throw new KnowledgeImportFailure(400, 'document_content_invalid', 'Document content must be base64 encoded');
+  }
+  const buffer = Buffer.from(normalized, 'base64');
+  if (buffer.length === 0) {
+    throw new KnowledgeImportFailure(400, 'document_content_required', 'Document content is required');
+  }
+  if (buffer.length > MAX_DOCUMENT_IMPORT_BYTES) {
+    throw new KnowledgeImportFailure(413, 'document_too_large', 'Document is too large');
+  }
+  return buffer;
+}
+
+function assertDocumentSignature(buffer: Buffer, documentType: KnowledgeDocumentImportKind): void {
+  if (documentType === 'pdf' && !buffer.subarray(0, 5).equals(Buffer.from('%PDF-'))) {
+    throw new KnowledgeImportFailure(400, 'document_content_invalid', 'Document content does not match a PDF file');
+  }
+  if (documentType === 'docx' && !buffer.subarray(0, 2).equals(Buffer.from('PK'))) {
+    throw new KnowledgeImportFailure(400, 'document_content_invalid', 'Document content does not match a DOCX file');
+  }
+}
+
+async function extractDocumentText(
+  buffer: Buffer,
+  documentType: KnowledgeDocumentImportKind,
+): Promise<{ text: string; warnings: string[] }> {
+  if (documentType === 'pdf') {
+    const parser = new PDFParse({ data: new Uint8Array(buffer) });
+    try {
+      const result = await parser.getText({ pageJoiner: '\n\n' });
+      return { text: result.text, warnings: [] };
+    } finally {
+      await parser.destroy();
+    }
+  }
+
+  const result = await mammoth.extractRawText({ buffer });
+  return {
+    text: result.value,
+    warnings: result.messages.map((message) => message.message).filter(Boolean).slice(0, 20),
+  };
+}
+
+function titleFromFileName(fileName: string, documentType: KnowledgeDocumentImportKind): string {
+  return sanitizeSingleLine(fileName.replace(new RegExp(`\\.${documentType}$`, 'i'), ''), 160);
 }
 
 function extractKeywords(value: string, maxKeywords: number): string[] {

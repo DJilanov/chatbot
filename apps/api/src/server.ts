@@ -53,6 +53,7 @@ import { defaultSiteConfig } from './defaults.js';
 import { createId, nowIso } from './ids.js';
 import {
   importKnowledgeFromCsv,
+  importKnowledgeFromDocument,
   importKnowledgeFromFaqText,
   importKnowledgeFromUrl,
   KnowledgeImportFailure,
@@ -61,6 +62,7 @@ import { localizedSiteConfig } from './localization.js';
 import { FileStore, type AppData } from './store.js';
 
 const MAX_BODY_BYTES = 128 * 1024;
+const MAX_DOCUMENT_IMPORT_BODY_BYTES = 3 * 1024 * 1024;
 const PUBLIC_CHAT_LIMIT = 30;
 const PUBLIC_CHAT_WINDOW_MS = 60_000;
 
@@ -672,6 +674,11 @@ async function handleAdminKnowledge(ctx: RouteContext, parts: string[], siteId: 
     return;
   }
 
+  if (ctx.req.method === 'POST' && parts[4] === 'import-document' && parts.length === 5) {
+    await handleAdminKnowledgeImportDocument(ctx, siteId, auth);
+    return;
+  }
+
   const entryId = parts[4];
   if (!entryId || parts.length !== 5) {
     throw new HttpError(404, 'not_found', 'Knowledge route not found');
@@ -774,6 +781,36 @@ async function handleAdminKnowledgeImportFaq(
   const intent = normalizeKnowledgeIntent(body['intent']);
   try {
     sendJson(ctx.res, 200, importKnowledgeFromFaqText({ text: body['text'], locale, intent }));
+  } catch (error) {
+    if (error instanceof KnowledgeImportFailure) {
+      throw new HttpError(error.status, error.code, error.message);
+    }
+    throw error;
+  }
+}
+
+async function handleAdminKnowledgeImportDocument(
+  ctx: RouteContext,
+  siteId: string,
+  auth: AdminAuth,
+): Promise<void> {
+  const body = asRecord(await readJson(ctx.req, MAX_DOCUMENT_IMPORT_BODY_BYTES));
+  const data = await ctx.store.read();
+  const site = requireSiteRole(data, auth, siteId, 'admin');
+  const locale = normalizeLocale(body['locale'], site.config.defaultLocale);
+  const intent = normalizeKnowledgeIntent(body['intent']);
+  try {
+    sendJson(
+      ctx.res,
+      200,
+      await importKnowledgeFromDocument({
+        fileName: body['fileName'],
+        contentBase64: body['contentBase64'],
+        mimeType: body['mimeType'],
+        locale,
+        intent,
+      }),
+    );
   } catch (error) {
     if (error instanceof KnowledgeImportFailure) {
       throw new HttpError(error.status, error.code, error.message);
@@ -2306,13 +2343,13 @@ function normalizeOrganizationRole(value: unknown): OrganizationRole {
   throw new HttpError(400, 'invalid_role', 'User role is invalid');
 }
 
-async function readJson(req: IncomingMessage): Promise<unknown> {
+async function readJson(req: IncomingMessage, maxBytes = MAX_BODY_BYTES): Promise<unknown> {
   const chunks: Buffer[] = [];
   let total = 0;
   for await (const chunk of req) {
     const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     total += buffer.length;
-    if (total > MAX_BODY_BYTES) throw new HttpError(413, 'body_too_large', 'Request body is too large');
+    if (total > maxBytes) throw new HttpError(413, 'body_too_large', 'Request body is too large');
     chunks.push(buffer);
   }
   if (chunks.length === 0) return {};

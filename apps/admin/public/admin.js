@@ -68,6 +68,8 @@ const adminTranslations = {
     'Import CSV drafts': 'Импортирай CSV чернови',
     'Pasted FAQ or policy text': 'Поставен FAQ или текст с правила',
     'Import FAQ drafts': 'Импортирай FAQ чернови',
+    'PDF or DOCX file': 'PDF или DOCX файл',
+    'Import file draft': 'Импортирай файл',
     Title: 'Заглавие',
     Keywords: 'Ключови думи',
     'English answer': 'Отговор на английски',
@@ -130,6 +132,9 @@ const adminTranslations = {
       'Импортирани са {count} CSV чернови. Прегледайте чернова преди запис.',
     'Imported {count} FAQ drafts. Review a draft before saving.':
       'Импортирани са {count} FAQ чернови. Прегледайте чернова преди запис.',
+    'Imported {count} document drafts from {fileName}. Review before saving.':
+      'Импортирани са {count} чернови от {fileName}. Прегледайте преди запис.',
+    'Choose a PDF or DOCX file.': 'Изберете PDF или DOCX файл.',
     'Knowledge draft prepared. Add the approved answer before saving.':
       'Черновата е подготвена. Добавете одобрен отговор преди запис.',
     'Knowledge draft loaded. Review it before saving.': 'Черновата е заредена. Прегледайте я преди запис.',
@@ -456,6 +461,7 @@ function fillConfig(site) {
   const importForm = qs('#knowledge-import-form');
   const csvImportForm = qs('#knowledge-csv-import-form');
   const faqImportForm = qs('#knowledge-faq-import-form');
+  const documentImportForm = qs('#knowledge-document-import-form');
   form.elements.title.value = site.config.branding.title || '';
   form.elements.subtitle.value = site.config.branding.subtitle || '';
   form.elements.assistantName.value = site.config.branding.assistantName || '';
@@ -470,6 +476,7 @@ function fillConfig(site) {
   if (importForm) importForm.elements.locale.value = site.config.defaultLocale === 'en' ? 'en' : 'bg';
   if (csvImportForm) csvImportForm.elements.locale.value = site.config.defaultLocale === 'en' ? 'en' : 'bg';
   if (faqImportForm) faqImportForm.elements.locale.value = site.config.defaultLocale === 'en' ? 'en' : 'bg';
+  if (documentImportForm) documentImportForm.elements.locale.value = site.config.defaultLocale === 'en' ? 'en' : 'bg';
 }
 
 function renderKnowledge(entries) {
@@ -864,6 +871,39 @@ async function importKnowledgeFaq(event) {
   setStatus(t('Imported {count} FAQ drafts. Review a draft before saving.', { count: response.drafts.length }), 'ok');
 }
 
+async function importKnowledgeDocument(event) {
+  event.preventDefault();
+  if (!state.selectedSiteId) return;
+  const form = event.currentTarget;
+  const values = formRecord(form);
+  const file = values.file;
+  if (!(file instanceof File) || file.size === 0) {
+    setStatus('Choose a PDF or DOCX file.', 'error');
+    return;
+  }
+
+  const contentBase64 = await readFileAsBase64(file);
+  const response = await api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/knowledge/import-document`, {
+    method: 'POST',
+    body: JSON.stringify({
+      fileName: file.name,
+      mimeType: file.type,
+      contentBase64,
+      locale: values.locale,
+      intent: values.intent,
+    }),
+  });
+  state.importDrafts = response.drafts;
+  renderKnowledgeImportDrafts(response.drafts, response.skippedBlocks);
+  setStatus(
+    t('Imported {count} document drafts from {fileName}. Review before saving.', {
+      count: response.drafts.length,
+      fileName: response.fileName,
+    }),
+    'ok',
+  );
+}
+
 function draftKnowledgeFromMissingAnswer(actionId) {
   const item = state.missingAnswers.find((missingAnswer) => missingAnswer.id === actionId);
   if (!item) return;
@@ -1062,6 +1102,18 @@ function draftPreview(draft) {
   return localizedAnswer(draft.answer || {}).slice(0, 220);
 }
 
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+      const result = String(reader.result || '');
+      resolve(result.includes(',') ? result.slice(result.indexOf(',') + 1) : result);
+    });
+    reader.addEventListener('error', () => reject(reader.error || new Error('Could not read file')));
+    reader.readAsDataURL(file);
+  });
+}
+
 function guessKnowledgeIntent(text) {
   const normalized = String(text || '').toLowerCase();
   if (/(цена|цени|колко струва|price|pricing|cost|quote)/i.test(normalized)) return 'pricing';
@@ -1235,6 +1287,9 @@ qs('#knowledge-csv-import-form').addEventListener('submit', (event) => {
 });
 qs('#knowledge-faq-import-form').addEventListener('submit', (event) => {
   void importKnowledgeFaq(event).catch((error) => setStatus(error.message, 'error'));
+});
+qs('#knowledge-document-import-form').addEventListener('submit', (event) => {
+  void importKnowledgeDocument(event).catch((error) => setStatus(error.message, 'error'));
 });
 qs('#refresh-button').addEventListener('click', () => {
   void loadAll().catch((error) => setStatus(error.message, 'error'));

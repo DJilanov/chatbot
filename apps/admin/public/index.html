@@ -223,6 +223,41 @@
             </label>
             <button type="submit">Import FAQ drafts</button>
           </form>
+          <form id="knowledge-document-import-form" class="grid-form import-form">
+            <label class="wide">
+              PDF or DOCX file
+              <input
+                name="file"
+                type="file"
+                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                required
+              />
+            </label>
+            <label>
+              Default language
+              <select name="locale">
+                <option value="bg">Bulgarian</option>
+                <option value="en">English</option>
+              </select>
+            </label>
+            <label>
+              Default intent
+              <select name="intent">
+                <option value="custom">Custom</option>
+                <option value="company_info">Company info</option>
+                <option value="services">Services</option>
+                <option value="pricing">Pricing</option>
+                <option value="delivery_policy">Delivery policy</option>
+                <option value="returns_policy">Returns policy</option>
+                <option value="warranty_policy">Warranty policy</option>
+                <option value="payment_policy">Payment policy</option>
+                <option value="invoice_policy">Invoice policy</option>
+                <option value="support">Support</option>
+                <option value="human_handoff">Human handoff</option>
+              </select>
+            </label>
+            <button type="submit">Import file draft</button>
+          </form>
           <div id="knowledge-import-draft-list" class="record-list import-draft-list"></div>
           <form id="knowledge-form" class="grid-form">
             <label>

@@ -310,6 +310,16 @@ export interface KnowledgeFaqImportResponse {
   skippedBlocks: number;
 }
 
+export type KnowledgeDocumentImportKind = 'pdf' | 'docx';
+
+export interface KnowledgeDocumentImportResponse {
+  drafts: KnowledgeImportDraft[];
+  skippedBlocks: number;
+  documentType: KnowledgeDocumentImportKind;
+  fileName: string;
+  warnings: string[];
+}
+
 export interface ChatMessage {
   id: string;
   conversationId: string;
