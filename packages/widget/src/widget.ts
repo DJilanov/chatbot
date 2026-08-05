@@ -35,10 +35,12 @@ interface ChatResponse {
 }
 
 interface ChatbotWindow extends Window {
+  CHATBOT_LOCALE?: string;
   Chatbot?: {
     open: () => void;
     close: () => void;
     send: (message: string) => Promise<void>;
+    setLocale: (locale: string) => Promise<void>;
     on: (eventName: string, handler: (payload: unknown) => void) => void;
   };
 }
@@ -47,6 +49,29 @@ interface PersistedState {
   conversationId: string | null;
   visitorId: string;
   messages: Array<{ role: 'user' | 'assistant'; text: string }>;
+}
+
+interface WidgetCopy {
+  aiNote: string;
+  askQuestion: string;
+  assistantUnavailable: string;
+  chat: string;
+  closeChat: string;
+  company: string;
+  contactFailed: string;
+  contactRequest: string;
+  contactRequired: string;
+  contactSent: string;
+  email: string;
+  helpful: string;
+  name: string;
+  notHelpful: string;
+  openChat: string;
+  phone: string;
+  send: string;
+  sendContact: string;
+  sendMessage: string;
+  typing: string;
 }
 
 const persisted: PersistedState = {
@@ -69,6 +94,11 @@ const persisted: PersistedState = {
   const handlers = new Map<string, Array<(payload: unknown) => void>>();
 
   const persisted = readState(storageKey);
+  let currentLocale = preferredLocale({
+    explicitLocale: script?.dataset['locale']?.trim() || (window as ChatbotWindow).CHATBOT_LOCALE,
+    supportedLocales: ['bg', 'en'],
+    fallbackLocale: 'bg',
+  });
   let config: WidgetConfig | null = null;
   let conversationId = persisted.conversationId;
   let visitorId = persisted.visitorId || createVisitorId();
@@ -85,12 +115,17 @@ const persisted: PersistedState = {
   const root = document.createElement('div');
   shadow.append(style, root);
 
-  void loadConfig().then((loaded) => {
+  void loadConfig(currentLocale).then((loaded) => {
     if (!loaded?.enabled) {
       host.remove();
       return;
     }
     config = loaded;
+    currentLocale = preferredLocale({
+      explicitLocale: currentLocale,
+      supportedLocales: loaded.supportedLocales,
+      fallbackLocale: loaded.defaultLocale,
+    });
     render();
     emit('ready', { siteId });
   });
@@ -109,6 +144,9 @@ const persisted: PersistedState = {
     send: async (message: string) => {
       await sendMessage(message);
     },
+    setLocale: async (locale: string) => {
+      await setLocale(locale);
+    },
     on: (eventName: string, handler: (payload: unknown) => void) => {
       const current = handlers.get(eventName) ?? [];
       current.push(handler);
@@ -116,16 +154,43 @@ const persisted: PersistedState = {
     },
   };
 
-  async function loadConfig(): Promise<WidgetConfig | null> {
+  window.addEventListener('chatbot:locale', (event) => {
+    const locale =
+      event instanceof CustomEvent && typeof event.detail?.locale === 'string'
+        ? event.detail.locale
+        : null;
+    if (locale) void setLocale(locale);
+  });
+
+  async function loadConfig(locale: string): Promise<WidgetConfig | null> {
     try {
-      const response = await fetch(`${apiUrl}/public/sites/${encodeURIComponent(siteId)}/config`, {
-        headers: { Accept: 'application/json' },
-      });
+      const response = await fetch(
+        `${apiUrl}/public/sites/${encodeURIComponent(siteId)}/config?locale=${encodeURIComponent(locale)}`,
+        {
+          headers: { Accept: 'application/json' },
+        },
+      );
       if (!response.ok) return null;
       return (await response.json()) as WidgetConfig;
     } catch {
       return null;
     }
+  }
+
+  async function setLocale(locale: string): Promise<void> {
+    const nextLocale = preferredLocale({
+      explicitLocale: locale,
+      supportedLocales: config?.supportedLocales ?? ['bg', 'en'],
+      fallbackLocale: config?.defaultLocale ?? 'bg',
+    });
+    currentLocale = nextLocale;
+    (window as ChatbotWindow).CHATBOT_LOCALE = nextLocale;
+    if (!config) return;
+
+    const localized = await loadConfig(nextLocale);
+    if (localized?.enabled) config = localized;
+    render();
+    emit('locale', { locale: nextLocale });
   }
 
   function render(): void {
@@ -136,6 +201,7 @@ const persisted: PersistedState = {
   }
 
   function renderShell(currentConfig: WidgetConfig): HTMLElement {
+    const copy = widgetCopy(currentLocale);
     const wrapper = document.createElement('div');
     wrapper.className = `chatbot-wrap ${currentConfig.branding.launcherPosition}`;
 
@@ -144,25 +210,25 @@ const persisted: PersistedState = {
     panel.setAttribute('aria-label', currentConfig.branding.title);
     panel.innerHTML = `
       <header class="chatbot-header">
-        <div class="chatbot-avatar">${escapeHtml(currentConfig.branding.assistantName.slice(0, 1) || 'A')}</div>
+        ${brandAvatar(currentConfig.branding)}
         <div class="chatbot-heading">
           <strong>${escapeHtml(currentConfig.branding.title)}</strong>
           <span>${escapeHtml(currentConfig.branding.subtitle)}</span>
         </div>
-        <button class="chatbot-icon" type="button" data-close aria-label="Close chat">x</button>
+        <button class="chatbot-icon" type="button" data-close aria-label="${escapeHtml(copy.closeChat)}">x</button>
       </header>
-      <div class="chatbot-ai-note">AI assistant. Do not share sensitive payment or password data.</div>
+      <div class="chatbot-ai-note">${escapeHtml(copy.aiNote)}</div>
       <div class="chatbot-messages" data-messages></div>
       <form class="chatbot-lead ${leadVisible ? 'is-open' : ''}" data-lead-form>
-        <input name="name" autocomplete="name" placeholder="Name" />
-        <input name="email" autocomplete="email" placeholder="Email" />
-        <input name="phone" autocomplete="tel" placeholder="Phone" />
-        <input name="company" autocomplete="organization" placeholder="Company" />
-        <button type="submit">Send contact</button>
+        <input name="name" autocomplete="name" placeholder="${escapeHtml(copy.name)}" />
+        <input name="email" autocomplete="email" placeholder="${escapeHtml(copy.email)}" />
+        <input name="phone" autocomplete="tel" placeholder="${escapeHtml(copy.phone)}" />
+        <input name="company" autocomplete="organization" placeholder="${escapeHtml(copy.company)}" />
+        <button type="submit">${escapeHtml(copy.sendContact)}</button>
       </form>
       <form class="chatbot-compose" data-chat-form>
-        <textarea name="message" rows="1" maxlength="2000" placeholder="Ask a question"></textarea>
-        <button type="submit" aria-label="Send message">${loading ? '...' : 'Send'}</button>
+        <textarea name="message" rows="1" maxlength="2000" placeholder="${escapeHtml(copy.askQuestion)}"></textarea>
+        <button type="submit" aria-label="${escapeHtml(copy.sendMessage)}">${loading ? '...' : escapeHtml(copy.send)}</button>
       </form>
     `;
 
@@ -170,7 +236,7 @@ const persisted: PersistedState = {
     if (messages) {
       appendMessage(messages, 'assistant', currentConfig.welcomeMessage, false);
       for (const item of persisted.messages) appendMessage(messages, item.role, item.text, true);
-      if (loading) appendMessage(messages, 'assistant', 'Typing...', true);
+      if (loading) appendMessage(messages, 'assistant', copy.typing, true);
       messages.scrollTop = messages.scrollHeight;
     }
 
@@ -196,8 +262,8 @@ const persisted: PersistedState = {
     const launcher = document.createElement('button');
     launcher.className = 'chatbot-launcher';
     launcher.type = 'button';
-    launcher.setAttribute('aria-label', open ? 'Close chat' : 'Open chat');
-    launcher.textContent = open ? 'x' : 'Chat';
+    launcher.setAttribute('aria-label', open ? copy.closeChat : copy.openChat);
+    launcher.innerHTML = open ? 'x' : launcherContent(currentConfig.branding, copy);
     launcher.addEventListener('click', () => {
       open = !open;
       render();
@@ -206,6 +272,18 @@ const persisted: PersistedState = {
 
     wrapper.append(panel, launcher);
     return wrapper;
+  }
+
+  function brandAvatar(branding: WidgetBranding): string {
+    if (branding.logoUrl) {
+      return `<div class="chatbot-avatar"><img src="${escapeHtml(branding.logoUrl)}" alt="" /></div>`;
+    }
+    return `<div class="chatbot-avatar">${escapeHtml(branding.assistantName.slice(0, 1) || 'A')}</div>`;
+  }
+
+  function launcherContent(branding: WidgetBranding, copy: WidgetCopy): string {
+    if (branding.logoUrl) return `<img src="${escapeHtml(branding.logoUrl)}" alt="" />`;
+    return escapeHtml(copy.chat);
   }
 
   async function sendMessage(message: string): Promise<void> {
@@ -225,7 +303,7 @@ const persisted: PersistedState = {
           conversationId,
           visitorId,
           message,
-          locale: browserLocale(config),
+          locale: activeLocale(config),
           pageUrl: window.location.href,
           referrer: document.referrer || undefined,
           consent: true,
@@ -248,7 +326,7 @@ const persisted: PersistedState = {
     } catch {
       persisted.messages.push({
         role: 'assistant',
-        text: 'The assistant is unavailable right now. Please try again later.',
+        text: widgetCopy(currentLocale).assistantUnavailable,
       });
       emit('error', { stage: 'chat' });
     } finally {
@@ -266,13 +344,13 @@ const persisted: PersistedState = {
       email: textField(formData, 'email'),
       phone: textField(formData, 'phone'),
       company: textField(formData, 'company'),
-      message: lastUserMessage() || 'Contact request from chatbot widget',
+      message: lastUserMessage() || widgetCopy(currentLocale).contactRequest,
       pageUrl: window.location.href,
-      locale: browserLocale(config),
+      locale: activeLocale(config),
       consent: true,
     };
     if (!payload.email && !payload.phone) {
-      persisted.messages.push({ role: 'assistant', text: 'Please add an email or phone number.' });
+      persisted.messages.push({ role: 'assistant', text: widgetCopy(currentLocale).contactRequired });
       render();
       return;
     }
@@ -289,14 +367,14 @@ const persisted: PersistedState = {
       leadVisible = false;
       persisted.messages.push({
         role: 'assistant',
-        text: 'Thanks. Your contact request was sent.',
+        text: widgetCopy(currentLocale).contactSent,
       });
       emit('lead_created', { conversationId });
       writeState(storageKey, { conversationId, visitorId, messages: persisted.messages });
     } catch {
       persisted.messages.push({
         role: 'assistant',
-        text: 'I could not send the contact request. Please try again.',
+        text: widgetCopy(currentLocale).contactFailed,
       });
       emit('error', { stage: 'lead' });
     } finally {
@@ -313,9 +391,10 @@ const persisted: PersistedState = {
     bubble.textContent = text;
     row.append(bubble);
     if (role === 'assistant' && withFeedback) {
+      const copy = widgetCopy(currentLocale);
       const feedback = document.createElement('div');
       feedback.className = 'chatbot-feedback';
-      feedback.innerHTML = '<button type="button" data-rate="positive">Helpful</button><button type="button" data-rate="negative">Not helpful</button>';
+      feedback.innerHTML = `<button type="button" data-rate="positive">${escapeHtml(copy.helpful)}</button><button type="button" data-rate="negative">${escapeHtml(copy.notHelpful)}</button>`;
       feedback.querySelectorAll<HTMLButtonElement>('button[data-rate]').forEach((button) => {
         button.addEventListener('click', () => {
           feedback.remove();
@@ -337,7 +416,7 @@ const persisted: PersistedState = {
         rating,
         assistantMessage,
         userMessage: lastUserMessage(),
-        locale: browserLocale(config),
+        locale: activeLocale(config),
       }),
     }).catch(() => undefined);
     emit('feedback', { rating });
@@ -396,10 +475,90 @@ function lastUserMessage(): string | undefined {
   return [...persisted.messages].reverse().find((message) => message.role === 'user')?.text;
 }
 
-function browserLocale(config: WidgetConfig): string {
-  const raw = navigator.language.toLowerCase().slice(0, 2);
-  return config.supportedLocales.includes(raw) ? raw : config.defaultLocale;
+function activeLocale(config: WidgetConfig): string {
+  const locale = preferredLocale({
+    explicitLocale: (window as ChatbotWindow).CHATBOT_LOCALE,
+    supportedLocales: config.supportedLocales,
+    fallbackLocale: config.defaultLocale,
+  });
+  (window as ChatbotWindow).CHATBOT_LOCALE = locale;
+  return locale;
 }
+
+function preferredLocale(input: {
+  explicitLocale?: string;
+  supportedLocales: string[];
+  fallbackLocale: string;
+}): string {
+  const supported = input.supportedLocales.length > 0 ? input.supportedLocales : ['bg', 'en'];
+  const candidates = [
+    input.explicitLocale,
+    ...browserLanguages(),
+    input.fallbackLocale,
+    'bg',
+    'en',
+  ];
+  for (const candidate of candidates) {
+    const locale = candidate?.toLowerCase().split('-')[0];
+    if (locale && supported.includes(locale)) return locale;
+  }
+  return supported[0] ?? 'bg';
+}
+
+function browserLanguages(): string[] {
+  if (Array.isArray(navigator.languages) && navigator.languages.length > 0) return [...navigator.languages];
+  return navigator.language ? [navigator.language] : [];
+}
+
+function widgetCopy(locale: string): WidgetCopy {
+  return locale === 'bg' ? widgetCopyBg : widgetCopyEn;
+}
+
+const widgetCopyBg: WidgetCopy = {
+  aiNote: 'AI асистент. Не споделяйте пароли, данни за плащане или друга чувствителна информация.',
+  askQuestion: 'Задайте въпрос',
+  assistantUnavailable: 'Асистентът временно не е достъпен. Моля, опитайте отново по-късно.',
+  chat: 'Чат',
+  closeChat: 'Затвори чата',
+  company: 'Фирма',
+  contactFailed: 'Не успях да изпратя контактната заявка. Моля, опитайте отново.',
+  contactRequest: 'Заявка за контакт от чат уиджета',
+  contactRequired: 'Моля, добавете email или телефон.',
+  contactSent: 'Благодаря. Контактната заявка беше изпратена.',
+  email: 'Email',
+  helpful: 'Полезно',
+  name: 'Име',
+  notHelpful: 'Не е полезно',
+  openChat: 'Отвори чата',
+  phone: 'Телефон',
+  send: 'Изпрати',
+  sendContact: 'Изпрати контакт',
+  sendMessage: 'Изпрати съобщение',
+  typing: 'Пише...',
+};
+
+const widgetCopyEn: WidgetCopy = {
+  aiNote: 'AI assistant. Do not share sensitive payment or password data.',
+  askQuestion: 'Ask a question',
+  assistantUnavailable: 'The assistant is unavailable right now. Please try again later.',
+  chat: 'Chat',
+  closeChat: 'Close chat',
+  company: 'Company',
+  contactFailed: 'I could not send the contact request. Please try again.',
+  contactRequest: 'Contact request from chatbot widget',
+  contactRequired: 'Please add an email or phone number.',
+  contactSent: 'Thanks. Your contact request was sent.',
+  email: 'Email',
+  helpful: 'Helpful',
+  name: 'Name',
+  notHelpful: 'Not helpful',
+  openChat: 'Open chat',
+  phone: 'Phone',
+  send: 'Send',
+  sendContact: 'Send contact',
+  sendMessage: 'Send message',
+  typing: 'Typing...',
+};
 
 function createVisitorId(): string {
   if ('randomUUID' in crypto) return `visitor_${crypto.randomUUID().replace(/-/g, '').slice(0, 24)}`;
@@ -420,7 +579,8 @@ function css(branding: WidgetBranding): string {
     .chatbot-panel { display: none; width: min(380px, calc(100vw - 32px)); height: min(620px, calc(100vh - 104px)); margin-bottom: 12px; overflow: hidden; border: 1px solid #d7dce5; border-radius: 12px; background: #fff; box-shadow: 0 20px 60px rgba(15, 23, 42, 0.22); }
     .chatbot-panel.is-open { display: flex; flex-direction: column; }
     .chatbot-header { display: flex; align-items: center; gap: 10px; padding: 12px; background: ${branding.primaryColor}; color: #fff; }
-    .chatbot-avatar { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.18); font-weight: 800; }
+    .chatbot-avatar { display: grid; place-items: center; width: 34px; height: 34px; overflow: hidden; border-radius: 50%; background: rgba(255,255,255,0.18); font-weight: 800; }
+    .chatbot-avatar img { width: 100%; height: 100%; object-fit: cover; background: #fff; }
     .chatbot-heading { display: grid; min-width: 0; flex: 1; }
     .chatbot-heading strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; line-height: 18px; }
     .chatbot-heading span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.82; font-size: 12px; line-height: 16px; }
@@ -441,7 +601,8 @@ function css(branding: WidgetBranding): string {
     .chatbot-compose textarea { min-height: 38px; max-height: 92px; flex: 1; resize: none; border: 1px solid #cfd6e2; border-radius: 9px; padding: 9px; font: inherit; font-size: 13px; outline: none; }
     .chatbot-compose textarea:focus { border-color: ${branding.primaryColor}; box-shadow: 0 0 0 3px color-mix(in srgb, ${branding.primaryColor} 20%, transparent); }
     .chatbot-compose button { min-width: 64px; height: 38px; border: 0; border-radius: 9px; color: #fff; background: ${branding.primaryColor}; font-weight: 800; cursor: pointer; }
-    .chatbot-launcher { float: ${opposite}; width: 62px; height: 62px; border: 0; border-radius: 50%; color: #fff; background: ${branding.primaryColor}; box-shadow: 0 12px 28px rgba(15, 23, 42, 0.24); font-weight: 800; cursor: pointer; }
+    .chatbot-launcher { float: ${opposite}; display: grid; place-items: center; width: 62px; height: 62px; border: 0; border-radius: 50%; color: #fff; background: ${branding.primaryColor}; box-shadow: 0 12px 28px rgba(15, 23, 42, 0.24); font-weight: 800; cursor: pointer; }
+    .chatbot-launcher img { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; background: #fff; }
     @media (max-width: 480px) {
       .chatbot-wrap { left: 12px; right: 12px; bottom: 12px; }
       .chatbot-panel { width: 100%; height: min(620px, calc(100vh - 92px)); }

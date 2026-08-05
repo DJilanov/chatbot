@@ -10,6 +10,7 @@ const types = new Map([
   ['.css', 'text/css; charset=utf-8'],
   ['.js', 'text/javascript; charset=utf-8'],
   ['.png', 'image/png'],
+  ['.webp', 'image/webp'],
 ]);
 
 createServer(async (req, res) => {
@@ -29,4 +30,3 @@ createServer(async (req, res) => {
 }).listen(port, () => {
   process.stdout.write(`Marketing page listening on http://localhost:${port}\n`);
 });
-

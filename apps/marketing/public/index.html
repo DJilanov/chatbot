@@ -20,7 +20,13 @@
   <body>
     <header class="site-nav">
       <a class="brand" href="#top" aria-label="Assistant SaaS home">
-        <span class="brand-mark">A</span>
+        <img
+          class="brand-logo"
+          src="/assets/jilanov-logo-compact.webp"
+          alt="Jilanov.com logo"
+          width="40"
+          height="40"
+        />
         <span>Assistant SaaS</span>
       </a>
       <nav aria-label="Primary navigation">
@@ -31,6 +37,10 @@
         <a href="#safety">Safety</a>
         <a href="#pricing">Pricing</a>
       </nav>
+      <div class="language-switch" role="group" aria-label="Language">
+        <button type="button" data-locale-option="bg">BG</button>
+        <button type="button" data-locale-option="en">EN</button>
+      </div>
       <a class="nav-cta" href="#demo">Book a demo</a>
     </header>
 
@@ -425,8 +435,8 @@
           <p class="eyebrow">Demo</p>
           <h2>See how the assistant would work on your website</h2>
           <p>
-            Share your site, ecommerce platform, and main goal. The form submits to the demo API
-            when it is running and stores the request as a lead.
+            Share your site, ecommerce platform, main goal, and timeline. The form submits to the
+            demo API and stores the request as a qualified lead.
           </p>
         </div>
         <form class="demo-form" id="demo-form">
@@ -437,6 +447,14 @@
           <label>
             Email
             <input name="email" type="email" autocomplete="email" required />
+          </label>
+          <label>
+            Phone
+            <input name="phone" autocomplete="tel" />
+          </label>
+          <label>
+            Company
+            <input name="company" autocomplete="organization" />
           </label>
           <label>
             Website URL
@@ -453,6 +471,15 @@
               <option>Recommend products</option>
               <option>Reduce support load</option>
               <option>Improve ecommerce conversion</option>
+            </select>
+          </label>
+          <label class="wide">
+            Timeline
+            <select name="timeline">
+              <option>This week</option>
+              <option>This month</option>
+              <option>Next quarter</option>
+              <option>Just researching</option>
             </select>
           </label>
           <button type="submit">Book a demo</button>
@@ -489,7 +516,16 @@
     </main>
 
     <footer class="footer">
-      <p>Assistant SaaS</p>
+      <div class="footer-brand">
+        <img
+          class="brand-logo"
+          src="/assets/jilanov-logo-compact.webp"
+          alt="Jilanov.com logo"
+          width="40"
+          height="40"
+        />
+        <p>Assistant SaaS</p>
+      </div>
       <nav aria-label="Footer navigation">
         <a href="#demo">Contact</a>
         <a href="#safety">Privacy and AI transparency</a>

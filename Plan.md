@@ -1069,6 +1069,10 @@ Implemented in the repo:
 - Resend-compatible email-provider boundary for lead and support-ticket notifications, with delivery results recorded in the action audit.
 - Admin identity endpoint, user last-seen tracking, and email invitations for newly created admin users when an email provider is configured.
 - Local landing page with live widget demo and lead form.
+- Browser-language localization for Bulgarian and English, with Bulgarian as the default target-market language.
+- Jilanov logo branding on the landing page.
+- Qualified demo request form with name, email, phone, company, website, platform, goal, timeline, page URL, locale, consent, lead storage, and owner email notification.
+- Email provider support for Resend and SMTP so production can use the same SMTP-style mail operation as the EU contact project.
 - Deterministic local AI provider plus OpenAI/Gemini provider boundaries.
 - Regression tests for chat guardrails, file persistence, lead operations, support operations, lead webhook delivery, and email notification delivery.
 
@@ -1092,12 +1096,150 @@ Still required before a serious paid launch:
 - Whether Commerce tier should support actual checkout creation or only safe checkout handoff at first.
 - Whether to build admin from scratch or extract/adapt the existing admin UI patterns.
 
+## Market Analysis And Expansion Plan
+
+Research date: 2026-08-05.
+
+Sources checked:
+
+- Fin AI Agent pricing and product navigation: https://fin.ai/pricing
+- Zendesk pricing and AI suite packaging: https://www.zendesk.com/pricing/
+- Tidio Lyro AI Agent: https://www.tidio.com/ai-agent/
+- Gorgias ecommerce AI Agent: https://www.gorgias.com/ai-agent
+- Chatbase pricing and feature limits: https://www.chatbase.co/pricing
+- Manychat pricing and channel packaging: https://manychat.com/pricing
+- HubSpot Breeze outcome pricing announcement: https://www.hubspot.com/company-news/hubspots-customer-agent-and-prospecting-agent-now-you-pay-when-the-task-is-complete
+- Steven Studio Bulgarian chatbot pricing article: https://stevenstudio.bg/bg/blog/ai-chatbot-za-biznes-cena-2025
+- AI-Masters Bulgarian packages: https://ai-masters.bg/ceni/
+- Saitami Bulgarian AI chatbot offer: https://saitami.bg/ai-chatbot
+- CloudCart CloudIO ecommerce AI positioning: https://cloudcart.com/bg/marketing-suite/cloudio
+- European Commission AI transparency rules: https://commission.europa.eu/news-and-media/news/safer-and-more-transparent-ai-2026-08-02_en
+
+### What Competitors Offer
+
+| Segment | Examples | Current offer pattern | Gap we can attack |
+| --- | --- | --- | --- |
+| Outcome-priced AI agents | Fin, HubSpot Breeze, Tidio Lyro, Gorgias | Charge by successful resolution, conversation, or lead outcome. They sell measurable automation instead of messages. | Bulgarian SMBs still need hands-on setup, local language quality, predictable packages, and integrations with their real site/store stack. |
+| Helpdesk suites | Zendesk, Gorgias | AI is bundled with ticketing, routing, knowledge base, omnichannel support, reporting, and agent productivity. | Many Bulgarian small businesses do not want to migrate helpdesk first. We should work with their website/email/CRM first and upgrade gradually. |
+| Generic AI chatbot builders | Chatbase, Botpress-style builders | Fast self-serve setup, trained agents, message credits, integrations, analytics, white-label and enterprise controls at higher tiers. | They are broad tools. Our pitch should be managed implementation, ecommerce action safety, Bulgarian-first UX, and action audit as standard. |
+| Social messaging automation | Manychat, Viber partner ecosystem | Messenger, Instagram, TikTok, WhatsApp, Telegram, SMS, contact-based automation, campaign flows. | Bulgarian businesses often care about Viber/Messenger. Add channels after the website assistant works. |
+| Bulgarian custom providers | Steven Studio, AI-Masters, Saitami, agency offers | Setup fees, monthly retainers, BG/EN support, FAQ training, widget, email notifications, lead capture, CRM, handoff, analytics. | Public offers rarely show deep auditability, eval tests, AI Act transparency controls, ecommerce product cards, safe order/return/warranty boundaries, or a live product admin loop. |
+| Ecommerce platform-native AI | CloudCart CloudIO, Gorgias ecommerce AI | Product/catalog-aware guidance, support automation, order tracking, returns, upsells, inventory-aware offers. | Platform-native tools are strong inside one ecosystem. We can be cross-platform: Jilanov ecommerce, WooCommerce, OpenCart, Shopify, CloudCart, custom REST/CSV. |
+
+### Market Takeaways
+
+- The market has moved from "chatbot" to "AI agent with measurable outcomes." Our sales language should be leads captured, support deflected, product discovery improved, and actions audited.
+- Outcome pricing is now normal globally: examples include per resolved conversation, per outcome, and per recommended lead. We should offer predictable Bulgarian packages first, then add optional outcome/usage pricing once we have enough data.
+- The Bulgarian market already understands custom AI chatbot setup pricing. The opportunity is not to be the cheapest bot; it is to be the most operationally trustworthy assistant for Bulgarian websites and ecommerce stores.
+- The strongest wedge is BG-first managed setup plus ecommerce integrations. A Bulgarian business owner should see: "They will install it, write the knowledge, make it answer in Bulgarian, connect my shop, email me leads, and show what happened."
+- Compliance can be a sales feature. The EU transparency rules took effect on 2 August 2026 and require users to be clearly informed when interacting with AI systems such as chatbots and AI agents. The widget should keep the AI disclosure visible by default.
+
+### Feature Expansion To Win Market Share
+
+Must build next:
+
+- Bulgarian-first admin UX, not only Bulgarian visitor widget copy.
+- Knowledge importer from website URLs, PDFs, DOCX, CSV, pasted FAQ, and product policy pages.
+- Human approval workflow for imported/translated knowledge.
+- Missing-answer queue generated from failed or low-confidence conversations.
+- Product feed ingestion for CSV/JSON first, then WooCommerce, OpenCart, Shopify, CloudCart, and Jilanov ecommerce.
+- Product cards with image, price, stock, URL, key specs, recommendation reason, and compare action.
+- Safe ecommerce actions: cart handoff, checkout handoff, order-status routing, return/warranty/invoice routing, and staff fallback when system data is missing.
+- CRM and sales operations: HubSpot, Pipedrive, Zoho, email notifications, webhook delivery, calendar/demo booking, duplicate lead detection, and lead summaries.
+- Channel expansion after website proof: Viber, Messenger, WhatsApp, Instagram, email, and Slack/Teams notifications.
+- Admin support queue with ticket status, transcript, reason, source URL, language, internal notes, assignment, and SLA.
+- Analytics focused on business value: leads, qualified leads, unanswered questions, handoffs, product clicks, checkout handoffs, negative feedback, language split, top pages, and estimated saved support time.
+- Quality system: eval tests per customer, hallucination checks, prompt/version history, answer source display, monthly QA report, and reviewable action logs.
+- Privacy/compliance controls: AI disclosure, privacy link, consent timestamp, retention policy, data export, data erasure, DPA template, and provider data-sharing settings.
+
+Differentiators to make visible:
+
+- "Bulgarian-first, English-ready."
+- "Managed setup included."
+- "Approved knowledge before AI."
+- "No invented order, invoice, warranty, return, price, or delivery facts."
+- "Every important action is logged."
+- "Works on existing websites first; ecommerce integrations come next."
+- "Email, webhook, CRM, and human handoff built in."
+- "EU AI transparency and GDPR workflows are product features, not afterthoughts."
+
+### Pricing Hypothesis To Validate
+
+Use Bulgarian leva on the sales page for local buyers and show euro only where needed.
+
+- Starter Website Assistant: setup 700-1500 BGN, monthly 99-149 BGN. Includes one site, BG/EN widget, approved FAQ knowledge, lead capture, email notifications, basic analytics.
+- Growth Assistant: setup 1500-2500 BGN, monthly 249-399 BGN. Adds knowledge import, webhook/CRM, conversation review, missing-answer queue, multiple users, and higher limits.
+- Commerce Assistant: setup 2500-5000 BGN, monthly 499-899 BGN. Adds product feed, product cards, comparison, checkout/cart handoff, ecommerce support routing, and monthly product-feed QA.
+- Managed Assistant: setup and monthly custom, usually 1200+ BGN/month. Includes knowledge writing, integrations, monthly report, optimization, safety tuning, and priority support.
+
+Do not publish hard prices until the first 3-5 pilots validate usage, support workload, and installation effort. The landing page can show "packages from" or "pilot pricing" and route serious prospects to a demo.
+
+### Landing Sales Page Requirements
+
+The landing page should be a working product presentation, not only a brochure.
+
+Must-have sections:
+
+- First viewport: Jilanov logo, Bulgarian headline, direct business outcome, live widget CTA, book demo CTA.
+- Proof band: "BG/EN", "one script install", "approved knowledge", "email notifications", "audit log", "AI transparency".
+- Live demo: prompt buttons that open the real widget, plus visible answers in Bulgarian by default.
+- Product loop: visitor question -> assistant answer -> lead/support event -> owner email/webhook -> admin audit.
+- Feature blocks: knowledge editor, lead inbox, support queue, product cards, action audit, analytics, integrations.
+- Ecommerce section: product discovery, compare, stock/price-safe answers, cart/checkout handoff, return/warranty/order routing.
+- Safety section: no hallucinated operational actions, approved knowledge first, staff fallback, consent and retention.
+- Bulgarian market section: local setup, Bulgarian language quality, Viber/Messenger roadmap, ecommerce platform support.
+- Pricing/packages: starter/growth/commerce/managed with clear "from" pricing or pilot pricing.
+- Competitive differentiation table: generic chatbot plugin vs global helpdesk suite vs Jilanov managed assistant.
+- FAQ: pricing, setup time, data handling, integrations, language quality, what happens when AI is unsure.
+- Demo form: name, email, phone, company, website, platform, goal, timeline, consent, and success/failure states.
+
+Copy principles:
+
+- Lead with "AI асистент за продажби и поддръжка за български сайтове и онлайн магазини."
+- Avoid vague "AI magic." Use measurable outcomes: more enquiries, fewer repetitive questions, faster response, safer ecommerce routing.
+- Show that a real team receives demo requests by email and can inspect leads in admin.
+- Show limits honestly: when the assistant cannot verify facts, it asks for contact details or routes to staff.
+- Use screenshots from the actual admin/widget instead of decorative illustrations.
+
+### Proper Implementation Sequence
+
+1. Finish current production polish:
+   - Keep browser-language localization with Bulgarian default.
+   - Use the Jilanov logo consistently.
+   - Keep the Book a demo form routed through `/public/sites/site_demo/leads`.
+   - Configure production email with SMTP or Resend so demo requests reach the owner inbox.
+   - Keep lead/email delivery audit logs visible in admin.
+
+2. Create sales-proof assets:
+   - Real screenshots of the widget, lead inbox, action audit, analytics, and email notification.
+   - One 60-90 second demo video in Bulgarian.
+   - One-page PDF offer for Bulgarian SMBs.
+   - Pilot onboarding checklist and demo script.
+
+3. Build product advantages:
+   - Website/PDF knowledge import.
+   - Missing-answer queue.
+   - Product feed ingestion and product cards.
+   - CRM/calendar integration.
+   - Viber/Messenger roadmap.
+
+4. Run pilots:
+   - 3 Bulgarian websites with different profiles: ecommerce, service business, B2B.
+   - Track conversations, leads, handoffs, unanswered questions, and support time saved.
+   - Convert pilot results into case studies and pricing confidence.
+
+5. Scale:
+   - Package install/onboarding as repeatable operations.
+   - Add partner offer for agencies.
+   - Publish comparison pages for "AI chatbot for Bulgarian business", "AI chatbot for online store", and "Chatbot vs live chat".
+   - Add billing and self-serve signup only after the managed sales motion is repeatable.
+
 ## Immediate Next Steps
 
-1. Commit this planning document to `chatbot.git`.
-2. Add a minimal README with product positioning and local setup placeholder.
-3. Scaffold the monorepo.
-4. Port the AI provider abstraction and assistant contracts.
-5. Build the Lead Assistant MVP first.
-6. Build the landing page alongside the admin/widget demo.
-7. Use the existing Mitko guardrails as the Commerce Assistant release gate.
+1. Configure production email for `chatbot.jilanov.com` with `EMAIL_PROVIDER=smtp` plus the same SMTP settings used by the EU contact flow, or with Resend if that sender domain is ready.
+2. Capture real product screenshots from the deployed widget, admin lead inbox, action audit, and owner email notification.
+3. Polish the Bulgarian landing copy around the Jilanov-managed offer and decide whether public prices should be shown as "from" prices or demo-only pilot pricing.
+4. Start 3 pilot installs: one ecommerce store, one service business, and one B2B website.
+5. Build website/PDF knowledge import and the missing-answer queue before adding heavier ecommerce integrations.
+6. Build CSV/JSON product feed ingestion and product cards, then prioritize WooCommerce, OpenCart, Shopify, CloudCart, and Jilanov ecommerce adapters based on pilot demand.
+7. Add CRM/calendar integrations and then Viber/Messenger channels after the website assistant has measurable pilot results.

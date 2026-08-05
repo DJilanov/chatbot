@@ -31,8 +31,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     emailProvider: createEmailProvider({
       provider: parseEmailProvider(env['EMAIL_PROVIDER']),
       apiKey: env['EMAIL_PROVIDER_API_KEY']?.trim() || undefined,
-      from: env['EMAIL_FROM']?.trim() || undefined,
+      from: env['EMAIL_FROM']?.trim() || env['SMTP_FROM']?.trim() || undefined,
       baseUrl: env['EMAIL_PROVIDER_BASE_URL']?.trim() || undefined,
+      smtpHost: env['SMTP_HOST']?.trim() || undefined,
+      smtpPort: parseOptionalInteger(env['SMTP_PORT']),
+      smtpUser: env['SMTP_USER']?.trim() || undefined,
+      smtpPass: env['SMTP_PASS']?.trim() || undefined,
+      smtpSecure: parseOptionalBoolean(env['SMTP_SECURE']),
+      replyTo: env['SMTP_REPLY_TO']?.trim() || undefined,
     }),
   };
 }
@@ -42,12 +48,23 @@ function parseInteger(value: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function parseOptionalInteger(value: string | undefined): number | undefined {
+  const parsed = Number.parseInt(value ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function parseOptionalBoolean(value: string | undefined): boolean | undefined {
+  if (value === 'true' || value === '1') return true;
+  if (value === 'false' || value === '0') return false;
+  return undefined;
+}
+
 function parseAiProvider(value: string | undefined): AiProviderId {
   if (value === 'openai' || value === 'gemini' || value === 'null') return value;
   return 'null';
 }
 
 function parseEmailProvider(value: string | undefined): EmailProviderId {
-  if (value === 'resend') return value;
+  if (value === 'resend' || value === 'smtp') return value;
   return 'none';
 }

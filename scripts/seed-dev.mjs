@@ -6,6 +6,8 @@ const now = new Date().toISOString();
 const demoWebsiteUrl = process.env.DEMO_WEBSITE_URL || 'http://localhost:4173';
 const demoAllowedDomains = splitList(process.env.DEMO_ALLOWED_DOMAINS || 'localhost');
 const demoContactEmail = process.env.DEMO_CONTACT_EMAIL || 'sales@example.com';
+const demoLogoUrl =
+  process.env.DEMO_LOGO_URL || `${demoWebsiteUrl.replace(/\/+$/, '')}/assets/jilanov-logo-compact.webp`;
 
 const emptyData = {
   organizations: [],
@@ -57,18 +59,18 @@ if (!data.sites.some((item) => item.id === 'site_demo')) {
     publicToken: 'token_demo',
     enabled: true,
     config: {
-      defaultLocale: 'en',
-      supportedLocales: ['en', 'bg'],
+      defaultLocale: 'bg',
+      supportedLocales: ['bg', 'en'],
       mode: 'lead',
       websiteUrl: demoWebsiteUrl,
       allowedDomains: demoAllowedDomains,
       branding: {
-        assistantName: 'Assistant',
-        title: 'Demo assistant',
-        subtitle: 'AI sales and support assistant',
+        assistantName: 'Асистент',
+        title: 'Демо асистент',
+        subtitle: 'AI асистент за продажби и поддръжка',
         primaryColor: '#175cff',
         launcherPosition: 'bottom-right',
-        logoUrl: null,
+        logoUrl: demoLogoUrl,
       },
       contact: {
         email: demoContactEmail,
@@ -85,6 +87,82 @@ if (!data.sites.some((item) => item.id === 'site_demo')) {
         supportWebhookUrl: null,
       },
       welcomeMessage:
+        'Здравейте, аз съм AI асистент. Попитайте ме за продукта, цените, ecommerce поддръжка или демо.',
+      fallbackMessage:
+        'Все още нямам потвърден отговор за това. Оставете контакт и екипът ще се свърже с вас.',
+      pricingMessage:
+        'Цената зависи от обема, интеграциите и дали ви трябва commerce асистент. Споделете сайта си и екипът ще подготви подходящ план.',
+      handoffMessage:
+        'Ще насоча това към екипа. Моля, оставете email или телефон, за да се свържем с вас.',
+      leadCapturePrompt:
+        'Моля, оставете име, email или телефон, адрес на сайта и кратко описание на това, което ви трябва.',
+      systemPrompt:
+        'Вие сте полезен AI асистент за демо на chatbot SaaS. Първо използвайте одобрени знания. Ако не сте сигурни, съберете контакт за екипа. Не измисляйте цени, статус на поръчки, плащания, доставки, правни условия или неподдържани оперативни факти.',
+      localized: {
+        en: {
+          branding: {
+            assistantName: 'Assistant',
+            title: 'Demo assistant',
+            subtitle: 'AI sales and support assistant',
+          },
+          welcomeMessage:
+            'Hi, I am an AI assistant. Ask me about the product, pricing, ecommerce support, or booking a demo.',
+          fallbackMessage:
+            'I do not have a confirmed answer for that yet. Leave your contact details and the team can follow up.',
+          pricingMessage:
+            'Pricing depends on usage, integrations, and whether you need the commerce assistant. Share your website and the team can prepare the right plan.',
+          handoffMessage:
+            'I will route this to the team. Please leave an email or phone number so they can follow up.',
+          leadCapturePrompt:
+            'Please leave your name, email or phone, website URL, and a short note about what you need.',
+          systemPrompt:
+            'You are a helpful AI assistant for a chatbot SaaS demo. Use approved knowledge first. If uncertain, collect contact details for the team. Never invent prices, order status, payment status, delivery status, legal terms, or unsupported operational facts.',
+        },
+      },
+    },
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
+const demoSite = data.sites.find((item) => item.id === 'site_demo');
+if (demoSite) {
+  demoSite.config.defaultLocale = 'bg';
+  demoSite.config.supportedLocales = ['bg', 'en'];
+  demoSite.config.websiteUrl = demoWebsiteUrl;
+  demoSite.config.allowedDomains = demoAllowedDomains;
+  demoSite.config.branding = {
+    ...demoSite.config.branding,
+    assistantName: 'Асистент',
+    title: 'Демо асистент',
+    subtitle: 'AI асистент за продажби и поддръжка',
+    logoUrl: demoLogoUrl,
+  };
+  demoSite.config.contact = {
+    ...demoSite.config.contact,
+    email: demoContactEmail,
+  };
+  demoSite.config.welcomeMessage =
+    'Здравейте, аз съм AI асистент. Попитайте ме за продукта, цените, ecommerce поддръжка или демо.';
+  demoSite.config.fallbackMessage =
+    'Все още нямам потвърден отговор за това. Оставете контакт и екипът ще се свърже с вас.';
+  demoSite.config.pricingMessage =
+    'Цената зависи от обема, интеграциите и дали ви трябва commerce асистент. Споделете сайта си и екипът ще подготви подходящ план.';
+  demoSite.config.handoffMessage =
+    'Ще насоча това към екипа. Моля, оставете email или телефон, за да се свържем с вас.';
+  demoSite.config.leadCapturePrompt =
+    'Моля, оставете име, email или телефон, адрес на сайта и кратко описание на това, което ви трябва.';
+  demoSite.config.systemPrompt =
+    'Вие сте полезен AI асистент за демо на chatbot SaaS. Първо използвайте одобрени знания. Ако не сте сигурни, съберете контакт за екипа. Не измисляйте цени, статус на поръчки, плащания, доставки, правни условия или неподдържани оперативни факти.';
+  demoSite.config.localized = {
+    ...demoSite.config.localized,
+    en: {
+      branding: {
+        assistantName: 'Assistant',
+        title: 'Demo assistant',
+        subtitle: 'AI sales and support assistant',
+      },
+      welcomeMessage:
         'Hi, I am an AI assistant. Ask me about the product, pricing, ecommerce support, or booking a demo.',
       fallbackMessage:
         'I do not have a confirmed answer for that yet. Leave your contact details and the team can follow up.',
@@ -97,9 +175,8 @@ if (!data.sites.some((item) => item.id === 'site_demo')) {
       systemPrompt:
         'You are a helpful AI assistant for a chatbot SaaS demo. Use approved knowledge first. If uncertain, collect contact details for the team. Never invent prices, order status, payment status, delivery status, legal terms, or unsupported operational facts.',
     },
-    createdAt: now,
-    updatedAt: now,
-  });
+  };
+  demoSite.updatedAt = now;
 }
 
 const entries = [

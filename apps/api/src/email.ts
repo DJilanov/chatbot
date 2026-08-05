@@ -1,4 +1,6 @@
-export type EmailProviderId = 'none' | 'resend';
+import nodemailer, { type Transporter } from 'nodemailer';
+
+export type EmailProviderId = 'none' | 'resend' | 'smtp';
 
 export interface EmailMessage {
   to: string;
@@ -27,6 +29,12 @@ export interface EmailProviderConfig {
   apiKey?: string;
   from?: string;
   baseUrl?: string;
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpUser?: string;
+  smtpPass?: string;
+  smtpSecure?: boolean;
+  replyTo?: string;
 }
 
 export class NullEmailProvider implements EmailProvider {
@@ -78,9 +86,66 @@ export class ResendEmailProvider implements EmailProvider {
   }
 }
 
+export class SmtpEmailProvider implements EmailProvider {
+  readonly id = 'smtp';
+  private readonly transporter: Transporter;
+  private readonly from: string;
+  private readonly replyTo: string | undefined;
+
+  constructor(input: {
+    host: string;
+    port: number;
+    secure: boolean;
+    from: string;
+    user?: string;
+    pass?: string;
+    replyTo?: string;
+  }) {
+    this.from = input.from;
+    this.replyTo = input.replyTo;
+    this.transporter = nodemailer.createTransport({
+      host: input.host,
+      port: input.port,
+      secure: input.secure,
+      ...(input.user && input.pass ? { auth: { user: input.user, pass: input.pass } } : {}),
+    });
+  }
+
+  async send(message: EmailMessage, options?: EmailSendOptions): Promise<EmailDeliveryResult> {
+    if (options?.signal?.aborted) throw new Error('SMTP email aborted');
+    const result = await withAbort(
+      this.transporter.sendMail({
+        from: this.from,
+        to: message.to,
+        replyTo: this.replyTo,
+        subject: message.subject,
+        text: message.text,
+        html: message.html ?? htmlFromText(message.text),
+      }),
+      options?.signal,
+    );
+    return {
+      provider: this.id,
+      messageId: messageIdFromSmtpResult(result),
+      responseStatus: null,
+    };
+  }
+}
+
 export function createEmailProvider(config: EmailProviderConfig): EmailProvider {
   if (config.provider === 'resend' && config.apiKey && config.from) {
     return new ResendEmailProvider(config.apiKey, config.from, config.baseUrl);
+  }
+  if (config.provider === 'smtp' && config.smtpHost && config.from) {
+    return new SmtpEmailProvider({
+      host: config.smtpHost,
+      port: config.smtpPort ?? 587,
+      secure: config.smtpSecure ?? config.smtpPort === 465,
+      from: config.from,
+      user: config.smtpUser,
+      pass: config.smtpPass,
+      replyTo: config.replyTo,
+    });
   }
   return new NullEmailProvider();
 }
@@ -95,4 +160,29 @@ function escapeHtml(text: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function messageIdFromSmtpResult(result: unknown): string | null {
+  const info = result as { messageId?: unknown; response?: unknown };
+  if (typeof info.messageId === 'string') return info.messageId;
+  if (typeof info.response === 'string') return info.response;
+  return null;
+}
+
+function withAbort<T>(promise: Promise<T>, signal: AbortSignal | undefined): Promise<T> {
+  if (!signal) return promise;
+  return new Promise<T>((resolve, reject) => {
+    const abort = (): void => reject(new Error('SMTP email aborted'));
+    signal.addEventListener('abort', abort, { once: true });
+    promise.then(
+      (value) => {
+        signal.removeEventListener('abort', abort);
+        resolve(value);
+      },
+      (error: unknown) => {
+        signal.removeEventListener('abort', abort);
+        reject(error);
+      },
+    );
+  });
 }

@@ -7,6 +7,7 @@ import {
   type PublicChatIntent,
   type Site,
 } from '@chatbot/contracts';
+import { localizedSiteConfig } from './localization.js';
 
 const MAX_HISTORY = 12;
 const MAX_AI_CONTEXT_ENTRIES = 20;
@@ -42,13 +43,17 @@ interface KnowledgeMatch {
 }
 
 export async function resolveChat(input: ChatEngineInput): Promise<ChatEngineResult> {
+  const site: Site = {
+    ...input.site,
+    config: localizedSiteConfig(input.site.config, input.locale),
+  };
   const text = input.message.trim();
   const normalized = normalizeSearchText(text);
   const contact = extractContactDetails(text);
 
   if (isGreeting(normalized)) {
     return deterministicResult({
-      reply: input.site.config.welcomeMessage,
+      reply: site.config.welcomeMessage,
       intent: 'greeting',
       action: 'greeting',
       metadata: {},
@@ -57,7 +62,7 @@ export async function resolveChat(input: ChatEngineInput): Promise<ChatEngineRes
 
   if (hasLeadIntent(normalized) || contact.email || contact.phone) {
     return deterministicResult({
-      reply: leadReply(input.site, contact),
+      reply: leadReply(site, input.locale, contact),
       intent: 'lead_capture',
       action: 'lead_capture_prompt',
       needsLeadDetails: !contact.email && !contact.phone,
@@ -67,7 +72,7 @@ export async function resolveChat(input: ChatEngineInput): Promise<ChatEngineRes
 
   if (hasHumanHandoffIntent(normalized)) {
     return deterministicResult({
-      reply: input.site.config.handoffMessage,
+      reply: site.config.handoffMessage,
       intent: 'human_handoff',
       action: 'human_handoff_request',
       needsLeadDetails: true,
@@ -79,7 +84,7 @@ export async function resolveChat(input: ChatEngineInput): Promise<ChatEngineRes
 
   if (hasPricingIntent(normalized)) {
     return deterministicResult({
-      reply: input.site.config.pricingMessage,
+      reply: site.config.pricingMessage,
       intent: 'pricing',
       action: 'pricing_question',
       needsLeadDetails: true,
@@ -89,7 +94,7 @@ export async function resolveChat(input: ChatEngineInput): Promise<ChatEngineRes
 
   const knowledgeMatch = findKnowledgeMatch(input.knowledgeEntries, text, input.locale);
   if (knowledgeMatch) {
-    const reply = pickLocalizedText(knowledgeMatch.entry.answer, input.locale, input.site.config.defaultLocale);
+    const reply = pickLocalizedText(knowledgeMatch.entry.answer, input.locale, site.config.defaultLocale);
     return deterministicResult({
       reply,
       intent: 'knowledge_answer',
@@ -103,7 +108,7 @@ export async function resolveChat(input: ChatEngineInput): Promise<ChatEngineRes
   }
 
   if (input.aiProvider.id !== 'null') {
-    const aiReply = await completeWithAi(input);
+    const aiReply = await completeWithAi({ ...input, site });
     if (aiReply) {
       return {
         reply: aiReply,
@@ -119,7 +124,7 @@ export async function resolveChat(input: ChatEngineInput): Promise<ChatEngineRes
   }
 
   return deterministicResult({
-    reply: `${input.site.config.fallbackMessage}\n\n${input.site.config.leadCapturePrompt}`,
+    reply: `${site.config.fallbackMessage}\n\n${site.config.leadCapturePrompt}`,
     intent: 'fallback',
     action: 'fallback_answer',
     needsLeadDetails: true,
@@ -233,9 +238,11 @@ async function completeWithAi(input: ChatEngineInput): Promise<string> {
   }
 }
 
-function leadReply(site: Site, contact: ContactDetails): string {
+function leadReply(site: Site, locale: LocaleCode, contact: ContactDetails): string {
   if (contact.email || contact.phone) {
-    return 'Thanks. I captured your contact details and the team can follow up.';
+    return locale === 'bg'
+      ? 'Благодаря. Записах контактните ви данни и екипът може да се свърже с вас.'
+      : 'Thanks. I captured your contact details and the team can follow up.';
   }
   return site.config.leadCapturePrompt;
 }
@@ -269,4 +276,3 @@ function hasPricingIntent(normalized: string): boolean {
 function leaksOperationalClaim(text: string): boolean {
   return /(i (added|created|cancelled|refunded|paid|changed)|already added|order is shipped|payment is confirmed|добавих|създадох|анулирах|платено|изпратена е)/i.test(text);
 }
-

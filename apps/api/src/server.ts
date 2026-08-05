@@ -50,6 +50,7 @@ import { resolveChat, extractContactDetails } from './chat-engine.js';
 import { loadConfig, type ApiConfig } from './config.js';
 import { defaultSiteConfig } from './defaults.js';
 import { createId, nowIso } from './ids.js';
+import { localizedSiteConfig } from './localization.js';
 import { FileStore, type AppData } from './store.js';
 
 const MAX_BODY_BYTES = 128 * 1024;
@@ -81,6 +82,7 @@ interface EmailDeliveryInput {
   locale: LocaleCode;
   subject: string;
   text: string;
+  html?: string;
   metadata?: Record<string, unknown>;
 }
 
@@ -179,7 +181,8 @@ async function handlePublicRoute(ctx: RouteContext, parts: string[]): Promise<vo
   enforceSiteDomain(ctx.req, site);
 
   if (ctx.req.method === 'GET' && parts[3] === 'config' && parts.length === 4) {
-    sendJson(ctx.res, 200, publicSiteConfig(site));
+    const locale = normalizeLocale(ctx.url.searchParams.get('locale'), site.config.defaultLocale);
+    sendJson(ctx.res, 200, publicSiteConfig(site, locale));
     return;
   }
 
@@ -1018,8 +1021,13 @@ async function dispatchLeadEmail(ctx: RouteContext, site: Site, lead: Lead): Pro
     action: 'lead_email_delivery',
     to,
     locale: lead.locale,
-    subject: `[${site.name}] New chatbot lead`,
+    subject: leadEmailSubject(site, lead),
     text: leadEmailText(site, lead),
+    html: leadEmailHtml(site, lead),
+    metadata: {
+      leadId: lead.id,
+      leadType: isDemoRequestLead(lead) ? 'demo_request' : 'lead',
+    },
   });
 }
 
@@ -1124,6 +1132,7 @@ async function deliverEmail(ctx: RouteContext, input: EmailDeliveryInput): Promi
       to: input.to,
       subject: input.subject,
       text: input.text,
+      html: input.html,
     }, {
       signal: controller.signal,
     });
@@ -1164,9 +1173,10 @@ async function deliverEmail(ctx: RouteContext, input: EmailDeliveryInput): Promi
 }
 
 function leadEmailText(site: Site, lead: Lead): string {
+  const title = isDemoRequestLead(lead) ? 'New demo request' : 'New chatbot lead';
   return truncateEmailText(
     [
-      'New chatbot lead',
+      title,
       '',
       `Site: ${site.name} (${site.id})`,
       `Lead ID: ${lead.id}`,
@@ -1184,6 +1194,51 @@ function leadEmailText(site: Site, lead: Lead): string {
       lead.message,
     ].join('\n'),
   );
+}
+
+function leadEmailHtml(site: Site, lead: Lead): string {
+  const isDemo = isDemoRequestLead(lead);
+  const title = isDemo ? 'New demo request' : 'New chatbot lead';
+  const intro = isDemo
+    ? 'A visitor requested a product demo from the landing page.'
+    : 'A visitor submitted contact details through the assistant.';
+  const replyHref = lead.email ? `mailto:${lead.email}` : null;
+  const rows = [
+    emailDetailRow('Site', `${site.name} (${site.id})`),
+    emailDetailRow('Lead ID', lead.id),
+    emailDetailRow('Conversation ID', lead.conversationId ?? 'n/a'),
+    emailDetailRow('Name', lead.name ?? 'n/a'),
+    emailDetailRow('Company', lead.company ?? 'n/a'),
+    emailDetailRow('Email', lead.email ?? 'n/a', replyHref),
+    emailDetailRow('Phone', lead.phone ?? 'n/a', lead.phone ? `tel:${lead.phone}` : null),
+    emailDetailRow('Locale', lead.locale),
+    emailDetailRow('Page', lead.pageUrl ?? 'n/a', safeUrlHref(lead.pageUrl)),
+    emailDetailRow('Consent captured', lead.consentAt ? 'yes' : 'no'),
+    emailDetailRow('Created', lead.createdAt),
+  ].join('');
+
+  return `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:22px;padding:26px 24px">
+    <div style="display:inline-block;padding:7px 12px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em">Website enquiry</div>
+    <h2 style="margin:16px 0 0;color:#0f172a;font-size:28px;line-height:1.2">${escapeHtml(title)}</h2>
+    <p style="margin:10px 0 0;color:#475569;font-size:15px;line-height:1.65">${escapeHtml(intro)}</p>
+    <table style="width:100%;border-collapse:collapse;margin:20px 0 0;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden">
+      ${rows}
+    </table>
+    <div style="margin:18px 0 0;border:1px solid #e5e7eb;border-radius:16px;background:#ffffff;padding:18px">
+      <p style="margin:0 0 10px;color:#0f172a;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.04em">Message</p>
+      <div style="white-space:pre-wrap;color:#334155;font-size:15px;line-height:1.7">${escapeHtml(lead.message)}</div>
+    </div>
+    ${lead.email ? `<div style="margin:22px 0 0"><a href="${escapeHtml(replyHref ?? '')}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:14px;padding:14px 22px;font-size:15px;font-weight:800">Reply to ${escapeHtml(lead.name ?? lead.email)}</a></div>` : ''}
+  </div>`;
+}
+
+function leadEmailSubject(site: Site, lead: Lead): string {
+  if (isDemoRequestLead(lead)) return `[${site.name}] New demo request`;
+  return `[${site.name}] New chatbot lead`;
+}
+
+function isDemoRequestLead(lead: Lead): boolean {
+  return lead.message.startsWith('Demo request from landing page') || lead.message.startsWith('Заявка за демо');
 }
 
 function userInviteEmailText(ctx: RouteContext, site: Site, user: OrganizationUser, token: string): string {
@@ -1228,6 +1283,35 @@ function supportEmailText(site: Site, ticket: SupportTicket): string {
   );
 }
 
+function emailDetailRow(label: string, value: string, href: string | null = null): string {
+  const safeValue = escapeHtml(value);
+  const renderedValue = href
+    ? `<a href="${escapeHtml(href)}" style="color:#2563eb;text-decoration:underline">${safeValue}</a>`
+    : safeValue;
+  return `<tr>
+    <td style="width:34%;border-bottom:1px solid #e5e7eb;padding:12px 14px;color:#64748b;font-size:13px;font-weight:800">${escapeHtml(label)}</td>
+    <td style="border-bottom:1px solid #e5e7eb;padding:12px 14px;color:#0f172a;font-size:14px">${renderedValue}</td>
+  </tr>`;
+}
+
+function safeUrlHref(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 function truncateEmailText(value: string): string {
   const limit = 12_000;
   if (value.length <= limit) return value;
@@ -1240,17 +1324,18 @@ function recipientDomain(email: string): string | null {
   return email.slice(atIndex + 1).toLowerCase();
 }
 
-function publicSiteConfig(site: Site): PublicSiteConfigResponse {
+function publicSiteConfig(site: Site, locale: LocaleCode): PublicSiteConfigResponse {
+  const config = localizedSiteConfig(site.config, locale);
   return {
     siteId: site.id,
     enabled: site.enabled,
-    mode: site.config.mode,
-    defaultLocale: site.config.defaultLocale,
-    supportedLocales: site.config.supportedLocales,
-    branding: site.config.branding,
-    privacy: site.config.privacy,
-    welcomeMessage: site.config.welcomeMessage,
-    leadCapturePrompt: site.config.leadCapturePrompt,
+    mode: config.mode,
+    defaultLocale: config.defaultLocale,
+    supportedLocales: config.supportedLocales,
+    branding: config.branding,
+    privacy: config.privacy,
+    welcomeMessage: config.welcomeMessage,
+    leadCapturePrompt: config.leadCapturePrompt,
   };
 }
 

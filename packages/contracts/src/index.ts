@@ -204,6 +204,16 @@ export interface SiteIntegrations {
   supportWebhookUrl: string | null;
 }
 
+export interface SiteLocalizedConfig {
+  branding?: Partial<Pick<SiteBranding, 'assistantName' | 'title' | 'subtitle'>>;
+  welcomeMessage?: string;
+  fallbackMessage?: string;
+  pricingMessage?: string;
+  handoffMessage?: string;
+  leadCapturePrompt?: string;
+  systemPrompt?: string;
+}
+
 export interface SiteConfig {
   defaultLocale: LocaleCode;
   supportedLocales: LocaleCode[];
@@ -220,6 +230,7 @@ export interface SiteConfig {
   handoffMessage: string;
   leadCapturePrompt: string;
   systemPrompt: string;
+  localized?: Partial<Record<LocaleCode, SiteLocalizedConfig>>;
 }
 
 export interface Site {

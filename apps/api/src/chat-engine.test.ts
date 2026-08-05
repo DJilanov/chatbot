@@ -61,6 +61,19 @@ test('pricing requests use configured safe pricing message', async () => {
   assert.equal(result.needsLeadDetails, true);
 });
 
+test('deterministic replies use the requested locale', async () => {
+  const result = await resolveChat({
+    site,
+    knowledgeEntries: knowledge,
+    history: [],
+    message: 'Колко струва?',
+    locale: 'bg',
+    aiProvider: nullProvider,
+  });
+  assert.equal(result.intent, 'pricing');
+  assert.match(result.reply, /Цената зависи/);
+});
+
 test('human requests are routed to handoff', async () => {
   const result = await resolveChat({
     site,
@@ -96,4 +109,3 @@ test('sanitizeAssistantReply removes unsafe display artifacts', () => {
   const input = '```secret``` **ok** id 11111111-1111-4111-8111-111111111111 [link](https://x.test)';
   assert.equal(sanitizeAssistantReply(input), 'ok id [reference] https://x.test');
 });
-

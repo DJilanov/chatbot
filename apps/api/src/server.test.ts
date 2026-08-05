@@ -95,6 +95,27 @@ async function createTestApi(configure?: {
   };
 }
 
+test('public site config localizes browser-facing copy', async () => {
+  const api = await createTestApi();
+  try {
+    const bgResponse = await fetch(`${api.url}/public/sites/site_test/config?locale=bg`);
+    assert.equal(bgResponse.status, 200);
+    const bgConfig = await json<Record<string, unknown>>(bgResponse);
+    const bgBranding = bgConfig['branding'] as Record<string, unknown>;
+    assert.equal(bgBranding['assistantName'], 'Асистент');
+    assert.match(String(bgConfig['welcomeMessage']), /Здравейте/);
+
+    const enResponse = await fetch(`${api.url}/public/sites/site_test/config?locale=en`);
+    assert.equal(enResponse.status, 200);
+    const enConfig = await json<Record<string, unknown>>(enResponse);
+    const enBranding = enConfig['branding'] as Record<string, unknown>;
+    assert.equal(enBranding['assistantName'], 'Assistant');
+    assert.match(String(enConfig['welcomeMessage']), /Hi, I am an AI assistant/);
+  } finally {
+    await api.close();
+  }
+});
+
 test('admin can update lead status and export leads as CSV', async () => {
   const api = await createTestApi();
   try {
@@ -231,6 +252,7 @@ test('lead email notifications are delivered and audited', async () => {
     assert.deepEqual(request?.payload['to'], ['owner@example.com']);
     assert.match(String(request?.payload['subject']), /New chatbot lead/);
     assert.match(String(request?.payload['text']), /email-lead@example\.com/);
+    assert.match(String(request?.payload['html']), /Website enquiry/);
 
     const data = await api.store.read();
     const delivery = data.actionLogs.find((item) => item.action === 'lead_email_delivery');
@@ -239,6 +261,59 @@ test('lead email notifications are delivered and audited', async () => {
     assert.equal(delivery?.metadata['recipientDomain'], 'example.com');
     assert.equal(delivery?.metadata['responseStatus'], 200);
     assert.equal(delivery?.metadata['messageId'], 'email_lead_test');
+  } finally {
+    await api.close();
+    await receiver.close();
+  }
+});
+
+test('demo lead email notifications use demo request context', async () => {
+  const receiver = await createEmailReceiver('email_demo_test');
+  const api = await createTestApi({
+    emailProvider: new ResendEmailProvider('re_test', 'Assistant <notify@example.com>', receiver.url),
+    site: (site) => {
+      site.config.contact.email = 'owner@example.com';
+    },
+  });
+  try {
+    const response = await fetch(`${api.url}/public/sites/site_test/leads`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Demo Visitor',
+        company: 'Demo Company',
+        email: 'demo-visitor@example.com',
+        phone: '+359888000000',
+        pageUrl: 'https://chatbot.jilanov.com/#demo',
+        locale: 'bg',
+        message: [
+          'Demo request from landing page',
+          '',
+          '--- Qualification ---',
+          'Intent: Book a demo',
+          'Company: Demo Company',
+          'Website: https://example.com',
+          'Ecommerce platform: WooCommerce',
+          'Main goal: Capture more leads',
+          'Timeline: This week',
+          'Language: bg',
+        ].join('\n'),
+        consent: true,
+      }),
+    });
+    assert.equal(response.status, 201);
+    const created = await json<LeadResponse>(response);
+    assert.equal(receiver.requests.length, 1);
+    const payload = receiver.requests[0]?.payload;
+    assert.match(String(payload?.['subject']), /New demo request/);
+    assert.match(String(payload?.['text']), /Timeline: This week/);
+    assert.match(String(payload?.['html']), /Reply to Demo Visitor/);
+    assert.match(String(payload?.['html']), /https:\/\/chatbot\.jilanov\.com\/#demo/);
+
+    const data = await api.store.read();
+    const delivery = data.actionLogs.find((item) => item.action === 'lead_email_delivery');
+    assert.equal(delivery?.metadata['leadType'], 'demo_request');
+    assert.equal(delivery?.metadata['leadId'], created.leadId);
   } finally {
     await api.close();
     await receiver.close();
