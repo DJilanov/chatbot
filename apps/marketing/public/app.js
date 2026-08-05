@@ -1,6 +1,6 @@
 (function () {
-  const demoSiteId = 'site_demo';
-  const apiUrl = 'http://localhost:8787';
+  const demoSiteId = window.CHATBOT_DEMO_SITE_ID || 'site_demo';
+  const apiUrl = (window.CHATBOT_API_URL || window.location.origin).replace(/\/+$/, '');
 
   document.querySelectorAll('[data-open-chat]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -71,7 +71,7 @@
     } catch {
       setStatus(
         statusElement,
-        'The demo API is not running. Start it with npm run dev:api, then submit again.',
+        'The demo API is unavailable right now. Please try again shortly.',
         'error',
       );
     }
@@ -91,4 +91,3 @@
     }, 1600);
   }
 })();
-

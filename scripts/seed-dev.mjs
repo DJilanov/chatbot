@@ -3,6 +3,9 @@ import { dirname } from 'node:path';
 
 const filePath = process.env.DATA_FILE || '.data/chatbot-dev.json';
 const now = new Date().toISOString();
+const demoWebsiteUrl = process.env.DEMO_WEBSITE_URL || 'http://localhost:4173';
+const demoAllowedDomains = splitList(process.env.DEMO_ALLOWED_DOMAINS || 'localhost');
+const demoContactEmail = process.env.DEMO_CONTACT_EMAIL || 'sales@example.com';
 
 const emptyData = {
   organizations: [],
@@ -57,8 +60,8 @@ if (!data.sites.some((item) => item.id === 'site_demo')) {
       defaultLocale: 'en',
       supportedLocales: ['en', 'bg'],
       mode: 'lead',
-      websiteUrl: 'http://localhost:4173',
-      allowedDomains: ['localhost'],
+      websiteUrl: demoWebsiteUrl,
+      allowedDomains: demoAllowedDomains,
       branding: {
         assistantName: 'Assistant',
         title: 'Demo assistant',
@@ -68,7 +71,7 @@ if (!data.sites.some((item) => item.id === 'site_demo')) {
         logoUrl: null,
       },
       contact: {
-        email: 'sales@example.com',
+        email: demoContactEmail,
         phone: null,
         bookingUrl: null,
       },
@@ -163,4 +166,11 @@ async function readData() {
   } catch {
     return structuredClone(emptyData);
   }
+}
+
+function splitList(value) {
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
 }

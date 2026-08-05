@@ -1,8 +1,12 @@
 const localDefaultToken =
   window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'change-me' : '';
+const localDefaultApiUrl =
+  window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:8787'
+    : window.location.origin;
 
 const state = {
-  apiUrl: localStorage.getItem('admin:apiUrl') || 'http://localhost:8787',
+  apiUrl: localStorage.getItem('admin:apiUrl') || localDefaultApiUrl,
   token: localStorage.getItem('admin:token') || localDefaultToken,
   identity: null,
   organizations: [],
