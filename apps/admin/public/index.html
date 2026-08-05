@@ -302,6 +302,25 @@
             <h2>Product feed</h2>
             <span id="product-count" class="pill">0 products</span>
           </div>
+          <form id="product-url-import-form" class="grid-form import-form">
+            <label class="wide">
+              Product feed URL
+              <input name="url" type="url" placeholder="https://example.com/products.csv" required />
+            </label>
+            <label>
+              Feed format
+              <select name="format">
+                <option value="auto">Auto detect</option>
+                <option value="csv">CSV</option>
+                <option value="json">JSON</option>
+              </select>
+            </label>
+            <label class="checkbox-row">
+              <input name="replace" type="checkbox" />
+              Replace current products
+            </label>
+            <button class="wide" type="submit">Import from URL</button>
+          </form>
           <form id="product-import-form" class="grid-form import-form">
             <label>
               Feed format

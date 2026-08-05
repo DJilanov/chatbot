@@ -444,6 +444,68 @@ test('admin can import product feed and public chat returns product cards', asyn
   }
 });
 
+test('admin can import product feed from public URL', async () => {
+  const api = await createTestApi();
+  const originalFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = (async () =>
+      new Response(
+        [
+          'sku,title,brand,category,price,currency,availability,product_url,description',
+          'URL-T14,Lenovo URL ThinkPad,Lenovo,Laptops,1499,BGN,in_stock,https://example.com/products/url-t14,URL imported laptop',
+        ].join('\n'),
+        {
+          status: 200,
+          headers: { 'content-type': 'text/csv' },
+        },
+      )) as typeof fetch;
+
+    const importResponse = await originalFetch(`${api.url}/admin/sites/site_test/products/import-url`, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer test-token',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        url: 'http://93.184.216.34/products.csv',
+        replace: false,
+      }),
+    });
+    assert.equal(importResponse.status, 200);
+    const imported = await json<ProductImportResponse>(importResponse);
+    assert.equal(imported.imported, 1);
+    assert.equal(imported.products[0]?.sku, 'URL-T14');
+
+    const data = await api.store.read();
+    const action = data.actionLogs.find((item) => item.action === 'product_feed_url_import');
+    assert.equal(action?.metadata['sourceUrl'], 'http://93.184.216.34/products.csv');
+  } finally {
+    globalThis.fetch = originalFetch;
+    await api.close();
+  }
+});
+
+test('admin product feed URL import blocks private network targets', async () => {
+  const api = await createTestApi();
+  try {
+    const importResponse = await fetch(`${api.url}/admin/sites/site_test/products/import-url`, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer test-token',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        url: 'http://127.0.0.1/products.csv',
+      }),
+    });
+    assert.equal(importResponse.status, 400);
+    const body = await json<Record<string, unknown>>(importResponse);
+    assert.equal(body['code'], 'product_feed_private_host');
+  } finally {
+    await api.close();
+  }
+});
+
 test('public chat includes product comparison payloads', async () => {
   const api = await createTestApi({
     site: (site) => {

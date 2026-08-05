@@ -61,7 +61,7 @@ import {
   KnowledgeImportFailure,
 } from './knowledge-import.js';
 import { localizedSiteConfig } from './localization.js';
-import { parseProductFeed, productKey, ProductImportFailure } from './product-import.js';
+import { fetchProductFeedFromUrl, parseProductFeed, productKey, ProductImportFailure } from './product-import.js';
 import { FileStore, type AppData } from './store.js';
 
 const MAX_BODY_BYTES = 128 * 1024;
@@ -841,6 +841,11 @@ async function handleAdminProducts(ctx: RouteContext, parts: string[], siteId: s
     return;
   }
 
+  if (ctx.req.method === 'POST' && parts[4] === 'import-url' && parts.length === 5) {
+    await handleAdminProductImportUrl(ctx, siteId, auth);
+    return;
+  }
+
   const productId = parts[4];
   if (!productId || parts.length !== 5) {
     throw new HttpError(404, 'not_found', 'Product route not found');
@@ -877,73 +882,120 @@ async function handleAdminProducts(ctx: RouteContext, parts: string[], siteId: s
 
 async function handleAdminProductImport(ctx: RouteContext, siteId: string, auth: AdminAuth): Promise<void> {
   const body = asRecord(await readJson(ctx.req, MAX_PRODUCT_IMPORT_BODY_BYTES));
-  const replace = body['replace'] === true;
-  let response!: ProductImportResponse;
   try {
-    await ctx.store.update((data) => {
-      const site = requireSiteRole(data, auth, siteId, 'admin');
-      const existingProducts = data.productItems.filter((item) => item.siteId === siteId);
-      const parsed = parseProductFeed({
-        siteId,
-        content: productFeedContent(body),
-        format: body['format'],
-        existingProducts,
-      });
-      const existingByKey = new Map(existingProducts.map((product) => [productKey(product), product]));
-      let imported = 0;
-      let updated = 0;
-      for (const product of parsed.products) {
-        if (existingByKey.has(productKey(product))) {
-          updated += 1;
-        } else {
-          imported += 1;
-        }
-      }
-
-      if (replace) {
-        data.productItems = data.productItems.filter((item) => item.siteId !== siteId).concat(parsed.products);
-      } else {
-        const nextByKey = new Map(data.productItems.filter((item) => item.siteId === siteId).map((item) => [productKey(item), item]));
-        for (const product of parsed.products) nextByKey.set(productKey(product), product);
-        data.productItems = data.productItems
-          .filter((item) => item.siteId !== siteId)
-          .concat([...nextByKey.values()]);
-      }
-
-      response = {
-        imported,
-        updated,
-        skippedRows: parsed.skippedRows,
-        products: productsForSite(data.productItems, siteId),
-      };
-      data.actionLogs.push(
-        newActionLog({
-          siteId,
-          conversationId: null,
-          action: 'product_feed_import',
-          status: 'completed',
-          confidence: 'system',
-          locale: site.config.defaultLocale,
-          sourceText: null,
-          reply: null,
-          reason: null,
-          metadata: {
-            imported,
-            updated,
-            skippedRows: parsed.skippedRows,
-            replace,
-          },
-        }),
-      );
-      data.usageEvents.push(newUsageEvent(siteId, 'action', 1));
+    const response = await saveProductFeedImport(ctx, siteId, auth, {
+      content: productFeedContent(body),
+      format: body['format'],
+      replace: body['replace'] === true,
+      sourceUrl: null,
+      action: 'product_feed_import',
     });
+    sendJson(ctx.res, 200, response);
   } catch (error) {
     if (error instanceof ProductImportFailure) {
       throw new HttpError(error.status, error.code, error.message);
     }
     throw error;
   }
-  sendJson(ctx.res, 200, response);
+}
+
+async function handleAdminProductImportUrl(ctx: RouteContext, siteId: string, auth: AdminAuth): Promise<void> {
+  const body = asRecord(await readJson(ctx.req));
+  const data = await ctx.store.read();
+  requireSiteRole(data, auth, siteId, 'admin');
+  try {
+    const fetched = await fetchProductFeedFromUrl({
+      url: body['url'],
+      timeoutMs: Math.min(ctx.config.integrationTimeoutMs, 10_000),
+    });
+    const response = await saveProductFeedImport(ctx, siteId, auth, {
+      content: fetched.content,
+      format: body['format'],
+      replace: body['replace'] === true,
+      sourceUrl: fetched.sourceUrl,
+      action: 'product_feed_url_import',
+    });
+    sendJson(ctx.res, 200, response);
+  } catch (error) {
+    if (error instanceof ProductImportFailure) {
+      throw new HttpError(error.status, error.code, error.message);
+    }
+    throw error;
+  }
+}
+
+async function saveProductFeedImport(
+  ctx: RouteContext,
+  siteId: string,
+  auth: AdminAuth,
+  input: {
+    content: unknown;
+    format: unknown;
+    replace: boolean;
+    sourceUrl: string | null;
+    action: 'product_feed_import' | 'product_feed_url_import';
+  },
+): Promise<ProductImportResponse> {
+  let response!: ProductImportResponse;
+  await ctx.store.update((data) => {
+    const site = requireSiteRole(data, auth, siteId, 'admin');
+    const existingProducts = data.productItems.filter((item) => item.siteId === siteId);
+    const parsed = parseProductFeed({
+      siteId,
+      content: input.content,
+      format: input.format,
+      existingProducts,
+    });
+    const existingByKey = new Map(existingProducts.map((product) => [productKey(product), product]));
+    let imported = 0;
+    let updated = 0;
+    for (const product of parsed.products) {
+      if (existingByKey.has(productKey(product))) {
+        updated += 1;
+      } else {
+        imported += 1;
+      }
+    }
+
+    if (input.replace) {
+      data.productItems = data.productItems.filter((item) => item.siteId !== siteId).concat(parsed.products);
+    } else {
+      const nextByKey = new Map(data.productItems.filter((item) => item.siteId === siteId).map((item) => [productKey(item), item]));
+      for (const product of parsed.products) nextByKey.set(productKey(product), product);
+      data.productItems = data.productItems
+        .filter((item) => item.siteId !== siteId)
+        .concat([...nextByKey.values()]);
+    }
+
+    response = {
+      imported,
+      updated,
+      skippedRows: parsed.skippedRows,
+      products: productsForSite(data.productItems, siteId),
+    };
+    data.actionLogs.push(
+      newActionLog({
+        siteId,
+        conversationId: null,
+        action: input.action,
+        status: 'completed',
+        confidence: 'system',
+        locale: site.config.defaultLocale,
+        sourceText: null,
+        reply: null,
+        reason: null,
+        metadata: {
+          imported,
+          updated,
+          skippedRows: parsed.skippedRows,
+          replace: input.replace,
+          sourceUrl: input.sourceUrl,
+        },
+      }),
+    );
+    data.usageEvents.push(newUsageEvent(siteId, 'action', 1));
+  });
+  return response;
 }
 
 async function handleAdminUpdateLead(

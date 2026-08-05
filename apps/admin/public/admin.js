@@ -76,6 +76,8 @@ const adminTranslations = {
     'Auto detect': 'Автоматично',
     'Replace current products': 'Замени текущите продукти',
     'Import products': 'Импортирай продукти',
+    'Product feed URL': 'URL на продуктов фийд',
+    'Import from URL': 'Импортирай от URL',
     Title: 'Заглавие',
     Keywords: 'Ключови думи',
     'English answer': 'Отговор на английски',
@@ -222,6 +224,7 @@ const adminTranslations = {
     negative_feedback: 'негативна оценка',
     failed_action: 'неуспешно действие',
     product_feed_import: 'импорт на продукти',
+    product_feed_url_import: 'импорт на продукти от URL',
     product_recommendation: 'препоръка на продукт',
     product_comparison: 'сравнение на продукти',
     commerce_handoff: 'насочване към покупка',
@@ -1007,6 +1010,30 @@ async function importProducts(event) {
   );
 }
 
+async function importProductsUrl(event) {
+  event.preventDefault();
+  if (!state.selectedSiteId) return;
+  const values = formRecord(event.currentTarget);
+  const response = await api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/products/import-url`, {
+    method: 'POST',
+    body: JSON.stringify({
+      url: values.url,
+      format: values.format === 'auto' ? undefined : values.format,
+      replace: values.replace === 'on',
+    }),
+  });
+  renderProducts(response.products);
+  await loadSelectedSite();
+  setStatus(
+    t('Imported {imported} products and updated {updated}. {skipped} rows skipped.', {
+      imported: response.imported,
+      updated: response.updated,
+      skipped: response.skippedRows,
+    }),
+    'ok',
+  );
+}
+
 async function updateProduct(productId, enabled) {
   if (!state.selectedSiteId || !productId) return;
   await api(`/admin/sites/${encodeURIComponent(state.selectedSiteId)}/products/${encodeURIComponent(productId)}`, {
@@ -1450,6 +1477,9 @@ qs('#knowledge-document-import-form').addEventListener('submit', (event) => {
 });
 qs('#product-import-form').addEventListener('submit', (event) => {
   void importProducts(event).catch((error) => setStatus(error.message, 'error'));
+});
+qs('#product-url-import-form').addEventListener('submit', (event) => {
+  void importProductsUrl(event).catch((error) => setStatus(error.message, 'error'));
 });
 qs('#refresh-button').addEventListener('click', () => {
   void loadAll().catch((error) => setStatus(error.message, 'error'));

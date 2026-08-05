@@ -1,8 +1,12 @@
+import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
 import type { ProductAvailability, ProductItem } from '@chatbot/contracts';
 import { createId, nowIso } from './ids.js';
+import { isPrivateAddress } from './knowledge-import.js';
 
 const MAX_PRODUCT_FEED_BYTES = 512 * 1024;
 const MAX_PRODUCT_IMPORT_ROWS = 500;
+const MAX_PRODUCT_FEED_REDIRECTS = 3;
 const DEFAULT_CURRENCY = 'BGN';
 
 export class ProductImportFailure extends Error {
@@ -18,6 +22,61 @@ export class ProductImportFailure extends Error {
 export interface ParsedProductFeed {
   products: ProductItem[];
   skippedRows: number;
+}
+
+export interface FetchedProductFeed {
+  content: string;
+  sourceUrl: string;
+}
+
+export async function fetchProductFeedFromUrl(input: {
+  url: unknown;
+  timeoutMs: number;
+}): Promise<FetchedProductFeed> {
+  const initialUrl = normalizeProductFeedUrl(input.url);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), Math.max(1000, input.timeoutMs));
+  try {
+    let url = initialUrl;
+    for (let redirectCount = 0; redirectCount <= MAX_PRODUCT_FEED_REDIRECTS; redirectCount += 1) {
+      await assertPublicProductFeedTarget(url);
+      const response = await fetch(url, {
+        method: 'GET',
+        redirect: 'manual',
+        signal: controller.signal,
+        headers: {
+          Accept: 'text/csv,application/json,text/plain;q=0.9,*/*;q=0.1',
+          'User-Agent': 'JilanovChatbotProductImporter/0.1',
+        },
+      });
+
+      if (isRedirect(response.status)) {
+        const location = response.headers.get('location');
+        if (!location) throw new ProductImportFailure(502, 'product_feed_redirect_invalid', 'Product feed redirected without a location');
+        url = normalizeProductFeedUrl(new URL(location, url).toString());
+        continue;
+      }
+
+      if (!response.ok) {
+        throw new ProductImportFailure(502, 'product_feed_fetch_failed', 'Could not fetch that product feed');
+      }
+
+      assertProductFeedContentType(response.headers.get('content-type'));
+      return {
+        content: await readLimitedProductFeed(response),
+        sourceUrl: url.toString(),
+      };
+    }
+  } catch (error) {
+    if (error instanceof ProductImportFailure) throw error;
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new ProductImportFailure(504, 'product_feed_timeout', 'Product feed import timed out');
+    }
+    throw new ProductImportFailure(502, 'product_feed_fetch_failed', 'Could not fetch that product feed');
+  } finally {
+    clearTimeout(timeout);
+  }
+  throw new ProductImportFailure(400, 'product_feed_too_many_redirects', 'Product feed redirected too many times');
 }
 
 export function parseProductFeed(input: {
@@ -63,6 +122,105 @@ export function productKey(product: Pick<ProductItem, 'sku' | 'title' | 'product
   if (product.sku) return `sku:${product.sku.toLowerCase()}`;
   if (product.productUrl) return `url:${product.productUrl.toLowerCase()}`;
   return `title:${normalizeSearchText(product.title)}`;
+}
+
+function normalizeProductFeedUrl(value: unknown): URL {
+  if (typeof value !== 'string') {
+    throw new ProductImportFailure(400, 'product_feed_url_required', 'Product feed URL is required');
+  }
+  let url: URL;
+  try {
+    url = new URL(value.trim());
+  } catch {
+    throw new ProductImportFailure(400, 'product_feed_url_invalid', 'Product feed URL is invalid');
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    throw new ProductImportFailure(400, 'product_feed_url_invalid', 'Only HTTP and HTTPS product feeds can be imported');
+  }
+  if (url.username || url.password) {
+    throw new ProductImportFailure(400, 'product_feed_url_invalid', 'Product feed URL cannot include credentials');
+  }
+  if (url.port && url.port !== '80' && url.port !== '443') {
+    throw new ProductImportFailure(400, 'product_feed_url_invalid', 'Only standard product feed ports can be imported');
+  }
+  url.hash = '';
+  return url;
+}
+
+async function assertPublicProductFeedTarget(url: URL): Promise<void> {
+  const hostname = url.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  if (hostname === 'localhost' || hostname.endsWith('.localhost')) {
+    throw new ProductImportFailure(400, 'product_feed_private_host', 'Only public product feeds can be imported');
+  }
+
+  const directFamily = isIP(hostname);
+  const addresses = directFamily
+    ? [{ address: hostname }]
+    : await lookup(hostname, { all: true, verbatim: true }).catch(() => {
+        throw new ProductImportFailure(400, 'product_feed_host_unresolved', 'Product feed host could not be resolved');
+      });
+
+  if (addresses.length === 0 || addresses.some((address) => isPrivateAddress(address.address))) {
+    throw new ProductImportFailure(400, 'product_feed_private_host', 'Only public product feeds can be imported');
+  }
+}
+
+function assertProductFeedContentType(value: string | null): void {
+  const contentType = value?.toLowerCase() ?? '';
+  if (!contentType) return;
+  if (
+    contentType.includes('text/csv') ||
+    contentType.includes('application/csv') ||
+    contentType.includes('application/json') ||
+    contentType.includes('text/plain') ||
+    contentType.includes('application/vnd.ms-excel') ||
+    contentType.includes('application/octet-stream')
+  ) {
+    return;
+  }
+  throw new ProductImportFailure(415, 'product_feed_content_type_unsupported', 'Only CSV and JSON product feeds can be imported');
+}
+
+async function readLimitedProductFeed(response: Response): Promise<string> {
+  const contentLength = Number(response.headers.get('content-length') ?? 0);
+  if (Number.isFinite(contentLength) && contentLength > MAX_PRODUCT_FEED_BYTES) {
+    throw new ProductImportFailure(413, 'product_feed_too_large', 'Product feed is too large');
+  }
+
+  if (!response.body) {
+    const text = await response.text();
+    assertFeedSize(text);
+    return text;
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+    total += value.byteLength;
+    if (total > MAX_PRODUCT_FEED_BYTES) {
+      throw new ProductImportFailure(413, 'product_feed_too_large', 'Product feed is too large');
+    }
+    chunks.push(value);
+  }
+  return new TextDecoder().decode(concatChunks(chunks, total));
+}
+
+function concatChunks(chunks: Uint8Array[], total: number): Uint8Array {
+  const buffer = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    buffer.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return buffer;
+}
+
+function isRedirect(status: number): boolean {
+  return status >= 300 && status < 400;
 }
 
 function normalizeProductFeedFormat(format: unknown, content: unknown): 'csv' | 'json' {
