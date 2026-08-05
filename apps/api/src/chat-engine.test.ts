@@ -100,6 +100,38 @@ test('product matches return product recommendation cards', async () => {
   assert.match(result.reply, /matching products|one matching product/);
 });
 
+test('comparison requests return product comparison rows', async () => {
+  const comparisonProducts: ProductItem[] = [
+    products[0]!,
+    {
+      ...products[0]!,
+      id: 'prod_lenovo_x1',
+      sku: 'X1-BG',
+      title: 'Lenovo ThinkPad X1 Carbon',
+      description: 'Lightweight business laptop with 32GB memory.',
+      price: 2199,
+      attributes: { memory: '32GB', storage: '1TB SSD', processor: 'Intel Core Ultra 7' },
+      keywords: ['thinkpad', 'lenovo', 'x1', 'carbon', 'лаптоп'],
+    },
+  ];
+  const result = await resolveChat({
+    site: { ...site, config: { ...site.config, mode: 'commerce_readonly' } },
+    knowledgeEntries: knowledge,
+    productItems: comparisonProducts,
+    history: [],
+    message: 'Compare Lenovo T14 and X1',
+    locale: 'en',
+    aiProvider: nullProvider,
+  });
+
+  assert.equal(result.intent, 'product_comparison');
+  assert.equal(result.action, 'product_comparison');
+  assert.equal(result.productCards?.length, 2);
+  assert.equal(result.productComparison?.products.length, 2);
+  assert.ok(result.productComparison?.rows.some((row) => row.label === 'Price'));
+  assert.ok(result.productComparison?.rows.some((row) => row.label === 'Memory'));
+});
+
 test('product SKUs with long numbers are not captured as phone leads', async () => {
   const numericSkuProduct: ProductItem = {
     ...products[0]!,

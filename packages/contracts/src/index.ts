@@ -29,6 +29,7 @@ export type PublicChatIntent =
   | 'lead_capture'
   | 'human_handoff'
   | 'product_recommendation'
+  | 'product_comparison'
   | 'pricing'
   | 'fallback'
   | 'ai_answer';
@@ -367,6 +368,28 @@ export interface ProductCard {
   reason: string;
 }
 
+export interface ProductComparisonProduct {
+  id: string;
+  title: string;
+  sku: string | null;
+}
+
+export interface ProductComparisonValue {
+  productId: string;
+  value: string;
+}
+
+export interface ProductComparisonRow {
+  label: string;
+  values: ProductComparisonValue[];
+}
+
+export interface ProductComparison {
+  title: string;
+  products: ProductComparisonProduct[];
+  rows: ProductComparisonRow[];
+}
+
 export interface ChatMessage {
   id: string;
   conversationId: string;
@@ -504,6 +527,7 @@ export interface PublicChatResponse {
   needsHuman: boolean;
   actionId: string | null;
   productCards?: ProductCard[];
+  productComparison?: ProductComparison;
 }
 
 export interface PublicLeadRequest {

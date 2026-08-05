@@ -1154,6 +1154,7 @@ async function handlePublicChat(ctx: RouteContext, site: Site): Promise<void> {
     needsHuman: result.needsHuman,
     actionId: action.id,
     productCards: result.productCards,
+    productComparison: result.productComparison,
   };
   sendJson(ctx.res, 200, { ...response, leadId });
 }

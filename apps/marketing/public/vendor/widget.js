@@ -145,8 +145,9 @@ const persisted = {
         const messages = panel.querySelector('[data-messages]');
         if (messages) {
             appendMessage(messages, 'assistant', currentConfig.welcomeMessage, false);
-            for (const item of persisted.messages)
-                appendMessage(messages, item.role, item.text, true, item.productCards);
+            for (const item of persisted.messages) {
+                appendMessage(messages, item.role, item.text, true, item.productCards, item.productComparison);
+            }
             if (loading)
                 appendMessage(messages, 'assistant', copy.typing, true);
             messages.scrollTop = messages.scrollHeight;
@@ -224,10 +225,12 @@ const persisted = {
             conversationId = result.conversationId;
             visitorId = result.visitorId;
             leadVisible = result.needsLeadDetails;
+            const productComparison = normalizeProductComparison(result.productComparison);
             persisted.messages.push({
                 role: 'assistant',
                 text: result.reply,
                 productCards: normalizeProductCards(result.productCards),
+                ...(productComparison ? { productComparison } : {}),
             });
             trimPersistedMessages();
             writeState(storageKey, { conversationId, visitorId, messages: persisted.messages });
@@ -237,6 +240,7 @@ const persisted = {
                 needsHuman: result.needsHuman,
                 actionId: result.actionId,
                 productCards: result.productCards ?? [],
+                productComparison: result.productComparison ?? null,
             });
         }
         catch {
@@ -301,7 +305,7 @@ const persisted = {
             render();
         }
     }
-    function appendMessage(container, role, text, withFeedback, productCards = []) {
+    function appendMessage(container, role, text, withFeedback, productCards = [], productComparison = null) {
         const row = document.createElement('div');
         row.className = `chatbot-message-row ${role}`;
         const stack = document.createElement('div');
@@ -311,8 +315,12 @@ const persisted = {
         bubble.textContent = text;
         stack.append(bubble);
         const safeProductCards = normalizeProductCards(productCards);
+        const safeProductComparison = normalizeProductComparison(productComparison);
         if (role === 'assistant' && safeProductCards.length > 0) {
-            stack.append(renderProductCards(safeProductCards));
+            stack.append(renderProductCards(safeProductCards, !safeProductComparison));
+        }
+        if (role === 'assistant' && safeProductComparison) {
+            stack.append(renderProductComparison(safeProductComparison));
         }
         if (role === 'assistant' && withFeedback) {
             const copy = widgetCopy(currentLocale);
@@ -330,7 +338,7 @@ const persisted = {
         row.append(stack);
         container.append(row);
     }
-    function renderProductCards(cards) {
+    function renderProductCards(cards, showCompare) {
         const copy = widgetCopy(currentLocale);
         const list = document.createElement('div');
         list.className = 'chatbot-product-cards';
@@ -357,7 +365,45 @@ const persisted = {
                     void sendProductClick(card);
             });
         });
+        if (showCompare && cards.length > 1) {
+            const compareButton = document.createElement('button');
+            compareButton.className = 'chatbot-product-compare';
+            compareButton.type = 'button';
+            compareButton.textContent = copy.compareProducts;
+            compareButton.addEventListener('click', () => {
+                void sendMessage(`${copy.comparePromptPrefix} ${cards.map((card) => card.sku || card.title).join(' vs ')}`);
+            });
+            list.append(compareButton);
+        }
         return list;
+    }
+    function renderProductComparison(comparison) {
+        const table = document.createElement('div');
+        table.className = 'chatbot-comparison';
+        const headings = comparison.products
+            .map((product) => `<th scope="col">${escapeHtml(product.sku || product.title)}</th>`)
+            .join('');
+        const rows = comparison.rows
+            .map((row) => `
+          <tr>
+            <th scope="row">${escapeHtml(row.label)}</th>
+            ${comparison.products
+            .map((product) => {
+            const value = row.values.find((item) => item.productId === product.id)?.value ?? '-';
+            return `<td>${escapeHtml(value)}</td>`;
+        })
+            .join('')}
+          </tr>
+        `)
+            .join('');
+        table.innerHTML = `
+      <strong>${escapeHtml(comparison.title)}</strong>
+      <table>
+        <thead><tr><th scope="col"></th>${headings}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+        return table;
     }
     async function sendFeedback(rating, assistantMessage) {
         if (!config)
@@ -454,10 +500,12 @@ function normalizePersistedMessage(value) {
     if (typeof record.text !== 'string')
         return null;
     const productCards = normalizeProductCards(record.productCards);
+    const productComparison = normalizeProductComparison(record.productComparison);
     return {
         role: record.role,
         text: record.text,
         productCards: productCards.length > 0 ? productCards : undefined,
+        ...(productComparison ? { productComparison } : {}),
     };
 }
 function normalizeProductCards(value) {
@@ -491,6 +539,67 @@ function normalizeProductCards(value) {
     })
         .filter((item) => item !== null)
         .slice(0, 4);
+}
+function normalizeProductComparison(value) {
+    if (!value || typeof value !== 'object')
+        return null;
+    const record = value;
+    const title = textOrNull(record['title']);
+    const products = normalizeComparisonProducts(record['products']);
+    const rows = normalizeComparisonRows(record['rows'], new Set(products.map((product) => product.id)));
+    if (!title || products.length < 2 || rows.length === 0)
+        return null;
+    return { title, products, rows };
+}
+function normalizeComparisonProducts(value) {
+    if (!Array.isArray(value))
+        return [];
+    return value
+        .map((item) => {
+        if (!item || typeof item !== 'object')
+            return null;
+        const record = item;
+        const id = textOrNull(record['id']);
+        const title = textOrNull(record['title']);
+        if (!id || !title)
+            return null;
+        return {
+            id,
+            title,
+            sku: textOrNull(record['sku']),
+        };
+    })
+        .filter((item) => item !== null)
+        .slice(0, 4);
+}
+function normalizeComparisonRows(value, productIds) {
+    if (!Array.isArray(value))
+        return [];
+    return value
+        .map((item) => {
+        if (!item || typeof item !== 'object')
+            return null;
+        const record = item;
+        const label = textOrNull(record['label']);
+        if (!label || !Array.isArray(record['values']))
+            return null;
+        const values = record['values']
+            .map((cell) => {
+            if (!cell || typeof cell !== 'object')
+                return null;
+            const cellRecord = cell;
+            const productId = textOrNull(cellRecord['productId']);
+            const text = textOrNull(cellRecord['value']);
+            if (!productId || !productIds.has(productId) || !text)
+                return null;
+            return { productId, value: text };
+        })
+            .filter((cell) => cell !== null)
+            .slice(0, 4);
+        return values.length > 0 ? { label, values } : null;
+    })
+        .filter((item) => item !== null)
+        .slice(0, 12);
 }
 function textOrNull(value) {
     return typeof value === 'string' && value.trim() ? value.trim().slice(0, 1000) : null;
@@ -558,6 +667,8 @@ const widgetCopyBg = {
     contactRequest: 'Заявка за контакт от чат уиджета',
     contactRequired: 'Моля, добавете email или телефон.',
     contactSent: 'Благодаря. Контактната заявка беше изпратена.',
+    compareProducts: 'Сравни',
+    comparePromptPrefix: 'Сравни',
     email: 'Email',
     helpful: 'Полезно',
     name: 'Име',
@@ -585,6 +696,8 @@ const widgetCopyEn = {
     contactRequest: 'Contact request from chatbot widget',
     contactRequired: 'Please add an email or phone number.',
     contactSent: 'Thanks. Your contact request was sent.',
+    compareProducts: 'Compare',
+    comparePromptPrefix: 'Compare',
     email: 'Email',
     helpful: 'Helpful',
     name: 'Name',
@@ -646,6 +759,12 @@ function css(branding) {
     .chatbot-product-body span, .chatbot-product-body p, .chatbot-product-body small { margin: 0; color: #64748b; font-size: 11px; line-height: 15px; }
     .chatbot-product-body p { display: -webkit-box; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
     .chatbot-product-body a { justify-self: start; border-radius: 6px; background: ${branding.primaryColor}; color: #fff; padding: 6px 8px; font-size: 11px; font-weight: 800; line-height: 14px; text-decoration: none; }
+    .chatbot-product-compare { justify-self: start; border: 1px solid #cfd6e2; border-radius: 6px; background: #fff; color: #172033; padding: 6px 9px; font-size: 11px; font-weight: 800; cursor: pointer; }
+    .chatbot-comparison { max-width: 100%; overflow-x: auto; border: 1px solid #dbe3ef; border-radius: 8px; background: #fff; }
+    .chatbot-comparison > strong { display: block; padding: 8px 9px; color: #172033; font-size: 12px; line-height: 16px; }
+    .chatbot-comparison table { width: 100%; min-width: 300px; border-collapse: collapse; color: #334155; font-size: 11px; line-height: 15px; }
+    .chatbot-comparison th, .chatbot-comparison td { max-width: 140px; border-top: 1px solid #eef1f5; padding: 7px 8px; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+    .chatbot-comparison th { color: #172033; font-weight: 800; background: #f8fafc; }
     .chatbot-lead { display: none; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px 12px; border-top: 1px solid #eef1f5; background: #f8fafc; }
     .chatbot-lead.is-open { display: grid; }
     .chatbot-lead input { min-width: 0; border: 1px solid #cfd6e2; border-radius: 8px; padding: 8px; font: inherit; font-size: 12px; }

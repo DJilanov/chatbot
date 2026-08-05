@@ -17,6 +17,7 @@ import type {
   OrganizationUserCreateResponse,
   PrivacyEraseResponse,
   ProductImportResponse,
+  ProductItem,
   PublicChatResponse,
   RetentionRunResponse,
   Site,
@@ -423,6 +424,69 @@ test('admin can import product feed and public chat returns product cards', asyn
     assert.ok(data.actionLogs.some((action) => action.action === 'product_feed_import'));
     assert.ok(data.actionLogs.some((action) => action.action === 'product_recommendation'));
     assert.ok(data.actionLogs.some((action) => action.action === 'product_clicked' && action.metadata['sku'] === 'T14-BG'));
+  } finally {
+    await api.close();
+  }
+});
+
+test('public chat includes product comparison payloads', async () => {
+  const api = await createTestApi({
+    site: (site) => {
+      site.config.mode = 'commerce_readonly';
+    },
+  });
+  const productBase: Omit<ProductItem, 'id' | 'sku' | 'title' | 'description' | 'price' | 'attributes'> = {
+    siteId: 'site_test',
+    enabled: true,
+    brand: 'Lenovo',
+    category: 'Laptops',
+    currency: 'BGN',
+    availability: 'in_stock',
+    imageUrl: null,
+    productUrl: null,
+    keywords: ['lenovo', 'thinkpad', 'лаптоп'],
+    createdAt: '2026-08-05T00:00:00.000Z',
+    updatedAt: '2026-08-05T00:00:00.000Z',
+  };
+  try {
+    await api.store.update((data) => {
+      data.productItems.push(
+        {
+          ...productBase,
+          id: 'prod_compare_t14',
+          sku: 'COMPARE-T14',
+          title: 'Lenovo ThinkPad T14',
+          description: 'Business laptop with 16GB memory.',
+          price: 1299,
+          attributes: { memory: '16GB', storage: '512GB SSD' },
+        },
+        {
+          ...productBase,
+          id: 'prod_compare_x1',
+          sku: 'COMPARE-X1',
+          title: 'Lenovo ThinkPad X1 Carbon',
+          description: 'Lightweight business laptop with 32GB memory.',
+          price: 2199,
+          attributes: { memory: '32GB', storage: '1TB SSD' },
+        },
+      );
+    });
+
+    const chatResponse = await fetch(`${api.url}/public/sites/site_test/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: 'Compare COMPARE-T14 and COMPARE-X1',
+        locale: 'en',
+      }),
+    });
+    assert.equal(chatResponse.status, 200);
+    const chat = await json<PublicChatResponse>(chatResponse);
+    assert.equal(chat.intent, 'product_comparison');
+    assert.equal(chat.productCards?.length, 2);
+    assert.equal(chat.productComparison?.products.length, 2);
+    assert.ok(chat.productComparison?.rows.some((row) => row.label === 'Price'));
+    assert.ok(chat.productComparison?.rows.some((row) => row.label === 'Memory'));
   } finally {
     await api.close();
   }

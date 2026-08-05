@@ -223,6 +223,7 @@ const adminTranslations = {
     failed_action: 'неуспешно действие',
     product_feed_import: 'импорт на продукти',
     product_recommendation: 'препоръка на продукт',
+    product_comparison: 'сравнение на продукти',
     product_clicked: 'клик върху продукт',
     answered: 'отговорено',
     pending_customer: 'чака клиент',

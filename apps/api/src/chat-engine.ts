@@ -5,6 +5,8 @@ import {
   type KnowledgeEntry,
   type LocaleCode,
   type ProductCard,
+  type ProductComparison,
+  type ProductComparisonRow,
   type ProductItem,
   type PublicChatIntent,
   type Site,
@@ -13,6 +15,24 @@ import { localizedSiteConfig } from './localization.js';
 
 const MAX_HISTORY = 12;
 const MAX_AI_CONTEXT_ENTRIES = 20;
+const ATTRIBUTE_PRIORITY = [
+  'model',
+  'модел',
+  'processor',
+  'процесор',
+  'memory',
+  'памет',
+  'storage',
+  'диск',
+  'display',
+  'дисплей',
+  'size',
+  'размер',
+  'color',
+  'цвят',
+  'grade',
+  'състояние',
+];
 
 export interface ContactDetails {
   email: string | null;
@@ -39,6 +59,7 @@ export interface ChatEngineResult {
   reason: string | null;
   metadata: Record<string, unknown>;
   productCards?: ProductCard[];
+  productComparison?: ProductComparison;
 }
 
 interface KnowledgeMatch {
@@ -94,7 +115,24 @@ export async function resolveChat(input: ChatEngineInput): Promise<ChatEngineRes
 
   const productMatches = findProductMatches(input.productItems ?? [], text, input.locale);
   if (productMatches.length > 0 && shouldShowProductMatches(site, normalized, productMatches[0]?.score ?? 0)) {
-    const cards = productMatches.slice(0, 3).map((match) => productCard(match, input.locale));
+    const visibleMatches = productMatches.slice(0, 3);
+    const cards = visibleMatches.map((match) => productCard(match, input.locale));
+    if (hasProductComparisonIntent(normalized) && cards.length >= 2) {
+      const comparison = buildProductComparison(visibleMatches, input.locale);
+      return deterministicResult({
+        reply: productComparisonReply(input.locale, cards.length),
+        intent: 'product_comparison',
+        action: 'product_comparison',
+        metadata: {
+          productIds: cards.map((card) => card.id),
+          productSkus: cards.map((card) => card.sku).filter(Boolean),
+          productCount: cards.length,
+          comparisonRows: comparison.rows.map((row) => row.label),
+        },
+        productCards: cards,
+        productComparison: comparison,
+      });
+    }
     return deterministicResult({
       reply: productReply(input.locale, cards.length),
       intent: 'product_recommendation',
@@ -239,6 +277,7 @@ function deterministicResult(input: {
   reason?: string | null;
   metadata: Record<string, unknown>;
   productCards?: ProductCard[];
+  productComparison?: ProductComparison;
 }): ChatEngineResult {
   return {
     reply: sanitizeAssistantReply(input.reply),
@@ -250,6 +289,7 @@ function deterministicResult(input: {
     reason: input.reason ?? null,
     metadata: input.metadata,
     productCards: input.productCards,
+    productComparison: input.productComparison,
   };
 }
 
@@ -353,6 +393,116 @@ function productReply(locale: LocaleCode, count: number): string {
     : `I found ${count} matching products from the catalog. Check the cards for price, availability, and details.`;
 }
 
+function productComparisonReply(locale: LocaleCode, count: number): string {
+  if (locale === 'bg') {
+    return `Сравних ${count} продукта от каталога по наличните данни. Ако липсва детайл, не е бил подаден във фийда.`;
+  }
+  return `I compared ${count} products from the catalog using the available feed data. Missing details were not supplied in the feed.`;
+}
+
+function buildProductComparison(matches: ProductMatch[], locale: LocaleCode): ProductComparison {
+  const products = matches.map((match) => match.product);
+  const emptyValue = comparisonEmptyValue(locale);
+  const rows: ProductComparisonRow[] = [
+    comparisonRow(comparisonLabel(locale, 'price'), products, (product) =>
+      product.price === null ? null : priceLabel(product.price, product.currency),
+      emptyValue,
+    ),
+    comparisonRow(comparisonLabel(locale, 'availability'), products, (product) => availabilityLabel(product.availability, locale), emptyValue),
+    comparisonRow(comparisonLabel(locale, 'brand'), products, (product) => product.brand, emptyValue),
+    comparisonRow(comparisonLabel(locale, 'category'), products, (product) => product.category, emptyValue),
+    comparisonRow(comparisonLabel(locale, 'description'), products, (product) => product.description, emptyValue),
+  ];
+  for (const key of comparisonAttributeKeys(products).slice(0, 6)) {
+    rows.push(comparisonRow(formatAttributeLabel(key, locale), products, (product) => product.attributes[key] ?? null, emptyValue));
+  }
+  return {
+    title: locale === 'bg' ? 'Сравнение на продукти' : 'Product comparison',
+    products: products.map((product) => ({
+      id: product.id,
+      title: product.title,
+      sku: product.sku,
+    })),
+    rows: rows.filter((row) => row.values.some((value) => value.value !== emptyValue)).slice(0, 10),
+  };
+}
+
+function comparisonRow(
+  label: string,
+  products: ProductItem[],
+  value: (product: ProductItem) => string | null,
+  emptyValue: string,
+): ProductComparisonRow {
+  return {
+    label,
+    values: products.map((product) => ({
+      productId: product.id,
+      value: value(product) ?? emptyValue,
+    })),
+  };
+}
+
+function comparisonAttributeKeys(products: ProductItem[]): string[] {
+  const keys = new Set<string>();
+  for (const product of products) {
+    for (const [key, value] of Object.entries(product.attributes)) {
+      if (value.trim()) keys.add(key);
+    }
+  }
+  return [...keys].sort((a, b) => attributePriority(a) - attributePriority(b) || a.localeCompare(b));
+}
+
+function attributePriority(key: string): number {
+  const normalized = normalizeSearchText(key).replace(/\s+/g, '_');
+  const index = ATTRIBUTE_PRIORITY.indexOf(normalized);
+  return index >= 0 ? index : ATTRIBUTE_PRIORITY.length;
+}
+
+function formatAttributeLabel(key: string, locale: LocaleCode): string {
+  const normalized = normalizeSearchText(key).replace(/\s+/g, '_');
+  if (normalized === 'memory' || normalized === 'памет') return locale === 'bg' ? 'Памет' : 'Memory';
+  if (normalized === 'storage' || normalized === 'диск') return locale === 'bg' ? 'Диск' : 'Storage';
+  if (normalized === 'processor' || normalized === 'процесор') return locale === 'bg' ? 'Процесор' : 'Processor';
+  if (normalized === 'display' || normalized === 'дисплей') return locale === 'bg' ? 'Дисплей' : 'Display';
+  if (normalized === 'model' || normalized === 'модел') return locale === 'bg' ? 'Модел' : 'Model';
+  if (normalized === 'size' || normalized === 'размер') return locale === 'bg' ? 'Размер' : 'Size';
+  if (normalized === 'color' || normalized === 'цвят') return locale === 'bg' ? 'Цвят' : 'Color';
+  if (normalized === 'grade' || normalized === 'състояние') return locale === 'bg' ? 'Състояние' : 'Grade';
+  return key.replace(/_/g, ' ');
+}
+
+function comparisonLabel(locale: LocaleCode, key: 'price' | 'availability' | 'brand' | 'category' | 'description'): string {
+  if (locale === 'bg') {
+    if (key === 'price') return 'Цена';
+    if (key === 'availability') return 'Наличност';
+    if (key === 'brand') return 'Марка';
+    if (key === 'category') return 'Категория';
+    return 'Описание';
+  }
+  if (key === 'price') return 'Price';
+  if (key === 'availability') return 'Availability';
+  if (key === 'brand') return 'Brand';
+  if (key === 'category') return 'Category';
+  return 'Description';
+}
+
+function availabilityLabel(value: ProductItem['availability'], locale: LocaleCode): string {
+  if (locale === 'bg') {
+    if (value === 'in_stock') return 'Наличен';
+    if (value === 'out_of_stock') return 'Изчерпан';
+    if (value === 'preorder') return 'Предварителна поръчка';
+    return 'По запитване';
+  }
+  if (value === 'in_stock') return 'In stock';
+  if (value === 'out_of_stock') return 'Out of stock';
+  if (value === 'preorder') return 'Preorder';
+  return 'On request';
+}
+
+function comparisonEmptyValue(locale: LocaleCode): string {
+  return locale === 'bg' ? 'Не е посочено' : 'Not specified';
+}
+
 function productReason(product: ProductItem, locale: LocaleCode, normalized: string): string {
   if (product.sku && normalized.includes(normalizeSearchText(product.sku))) {
     return locale === 'bg' ? `Съвпада със SKU ${product.sku}.` : `Matches SKU ${product.sku}.`;
@@ -380,6 +530,11 @@ function availabilityRank(value: ProductItem['availability']): number {
 function hasProductSearchIntent(normalized: string): boolean {
   return /\b(product|products|recommend|recommendation|show|find|catalog|item|items|sku|model)\b/i.test(normalized)
     || /(продукт|продукти|препоръч|покажи|намери|каталог|артикул|модел|стока|стоки)/i.test(normalized);
+}
+
+function hasProductComparisonIntent(normalized: string): boolean {
+  return /\b(compare|comparison|versus|vs|difference|differences|better)\b/i.test(normalized)
+    || /(сравни|сравнение|разлика|разлики|по[-\s]?доб)/i.test(normalized);
 }
 
 function leadReply(site: Site, locale: LocaleCode, contact: ContactDetails): string {
