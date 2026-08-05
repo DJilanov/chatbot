@@ -20,8 +20,16 @@ for (const text of [
   'exportLeads',
   'renderBilling',
   'renderUsers',
+  'renderIdentity',
+  'clearWorkspace',
+  '/admin/me',
 ]) {
   if (!script.includes(text)) throw new Error(`Missing admin behavior: ${text}`);
+}
+
+const html = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
+for (const text of ['Access token', 'identity-summary', 'sign-out-button']) {
+  if (!html.includes(text)) throw new Error(`Missing admin markup: ${text}`);
 }
 
 process.stdout.write('Admin console check passed\n');

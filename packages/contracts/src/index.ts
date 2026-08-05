@@ -129,6 +129,11 @@ export interface OrganizationUserCreateResponse {
   token: string;
 }
 
+export interface AdminMeResponse {
+  kind: 'bootstrap' | 'user';
+  user: OrganizationUserView | null;
+}
+
 export interface SiteDataExport {
   site: Site;
   exportedAt: string;

@@ -70,9 +70,11 @@ Authorization: Bearer change-me
 
 Set `ADMIN_TOKEN` in `.env` for real environments.
 
+The admin console accepts either the bootstrap token or a one-time user access token created by an owner. Set `ADMIN_BASE_URL` to the deployed admin console URL so invitation emails point to the right place.
+
 ## Email Notifications
 
-Lead and support-ticket email notifications are disabled by default. To enable Resend delivery, configure the API environment and set each site's contact email in the admin console:
+Lead, support-ticket, and admin user invitation email notifications are disabled by default. To enable Resend delivery, configure the API environment and set each site's contact email in the admin console for lead/support notifications:
 
 ```bash
 EMAIL_PROVIDER=resend

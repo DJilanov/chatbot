@@ -12,17 +12,21 @@
         <p class="eyebrow">Admin console</p>
         <h1>Assistant SaaS</h1>
       </div>
-      <form id="connection-form" class="connection">
-        <label>
-          API URL
-          <input id="api-url" value="http://localhost:8787" />
-        </label>
-        <label>
-          Admin token
-          <input id="admin-token" value="change-me" />
-        </label>
-        <button type="submit">Connect</button>
-      </form>
+      <div class="auth-panel">
+        <form id="connection-form" class="connection">
+          <label>
+            API URL
+            <input id="api-url" value="http://localhost:8787" autocomplete="url" />
+          </label>
+          <label>
+            Access token
+            <input id="admin-token" type="password" autocomplete="current-password" placeholder="Paste bootstrap or user token" />
+          </label>
+          <button type="submit">Connect</button>
+          <button id="sign-out-button" class="secondary-button" type="button" hidden>Sign out</button>
+        </form>
+        <p id="identity-summary" class="identity-summary">Not connected</p>
+      </div>
     </header>
 
     <main class="layout">

@@ -1,6 +1,6 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { URL } from 'node:url';
+import { pathToFileURL, URL } from 'node:url';
 import {
   BILLING_PLANS,
   createBillingSummary,
@@ -10,6 +10,7 @@ import {
   type BillingUsageIncrement,
 } from './billing.js';
 import {
+  type AdminMeResponse,
   normalizeLocale,
   sanitizePublicText,
   type ActionConfidence,
@@ -80,6 +81,7 @@ interface EmailDeliveryInput {
   locale: LocaleCode;
   subject: string;
   text: string;
+  metadata?: Record<string, unknown>;
 }
 
 interface BootstrapAuth {
@@ -210,6 +212,11 @@ async function handlePublicRoute(ctx: RouteContext, parts: string[]): Promise<vo
 }
 
 async function handleAdminRoute(ctx: RouteContext, parts: string[], auth: AdminAuth): Promise<void> {
+  if (ctx.req.method === 'GET' && parts.length === 2 && parts[1] === 'me') {
+    await handleAdminMe(ctx, auth);
+    return;
+  }
+
   if (ctx.req.method === 'GET' && parts.length === 2 && parts[1] === 'billing-plans') {
     sendJson(ctx.res, 200, BILLING_PLANS);
     return;
@@ -445,7 +452,7 @@ async function handleAdminUsers(
   }
 
   if (ctx.req.method === 'POST' && parts.length === 4) {
-    await handleAdminCreateUser(ctx, site.organizationId);
+    await handleAdminCreateUser(ctx, site);
     return;
   }
 
@@ -457,13 +464,32 @@ async function handleAdminUsers(
   throw new HttpError(404, 'not_found', 'User route not found');
 }
 
-async function handleAdminCreateUser(ctx: RouteContext, organizationId: string): Promise<void> {
+async function handleAdminMe(ctx: RouteContext, auth: AdminAuth): Promise<void> {
+  if (auth.kind === 'bootstrap') {
+    const response: AdminMeResponse = { kind: 'bootstrap', user: null };
+    sendJson(ctx.res, 200, response);
+    return;
+  }
+
+  let updatedUser: OrganizationUser | null = null;
+  await ctx.store.update((data) => {
+    const user = data.organizationUsers.find((item) => item.id === auth.user.id && item.organizationId === auth.user.organizationId);
+    if (!user || user.disabled) throw new HttpError(401, 'unauthorized', 'Admin token is invalid');
+    user.lastSeenAt = nowIso();
+    updatedUser = user;
+  });
+  if (!updatedUser) throw new HttpError(401, 'unauthorized', 'Admin token is invalid');
+  const response: AdminMeResponse = { kind: 'user', user: userView(updatedUser) };
+  sendJson(ctx.res, 200, response);
+}
+
+async function handleAdminCreateUser(ctx: RouteContext, site: Site): Promise<void> {
   const body = asRecord(await readJson(ctx.req));
   const timestamp = nowIso();
   const token = createId('user_token');
   const user: OrganizationUser = {
     id: createId('user'),
-    organizationId,
+    organizationId: site.organizationId,
     email: requireText(body['email'], 'email', 255).toLowerCase(),
     name: requireText(body['name'], 'name', 160),
     role: normalizeOrganizationRole(body['role']),
@@ -474,12 +500,13 @@ async function handleAdminCreateUser(ctx: RouteContext, organizationId: string):
     updatedAt: timestamp,
   };
   await ctx.store.update((data) => {
-    findOrganization(data, organizationId);
-    if (data.organizationUsers.some((item) => item.organizationId === organizationId && item.email === user.email)) {
+    findOrganization(data, site.organizationId);
+    if (data.organizationUsers.some((item) => item.organizationId === site.organizationId && item.email === user.email)) {
       throw new HttpError(409, 'user_exists', 'A user with this email already exists');
     }
     data.organizationUsers.push(user);
   });
+  await dispatchUserInviteEmail(ctx, site, user, token);
   const response: OrganizationUserCreateResponse = { user: userView(user), token };
   sendJson(ctx.res, 201, response);
 }
@@ -1010,6 +1037,23 @@ async function dispatchSupportEmail(ctx: RouteContext, site: Site, ticket: Suppo
   });
 }
 
+async function dispatchUserInviteEmail(ctx: RouteContext, site: Site, user: OrganizationUser, token: string): Promise<void> {
+  if (ctx.config.emailProvider.id === 'none') return;
+  await deliverEmail(ctx, {
+    siteId: site.id,
+    conversationId: null,
+    action: 'user_invite_email_delivery',
+    to: user.email,
+    locale: site.config.defaultLocale,
+    subject: `[${site.name}] Assistant SaaS admin invitation`,
+    text: userInviteEmailText(ctx, site, user, token),
+    metadata: {
+      userId: user.id,
+      role: user.role,
+    },
+  });
+}
+
 async function deliverWebhook(ctx: RouteContext, input: WebhookDeliveryInput): Promise<void> {
   const startedAt = Date.now();
   const controller = new AbortController();
@@ -1106,6 +1150,7 @@ async function deliverEmail(ctx: RouteContext, input: EmailDeliveryInput): Promi
         reply: null,
         reason,
         metadata: {
+          ...(input.metadata ?? {}),
           provider,
           recipientDomain: recipientDomain(input.to),
           responseStatus,
@@ -1137,6 +1182,26 @@ function leadEmailText(site: Site, lead: Lead): string {
       '',
       'Message:',
       lead.message,
+    ].join('\n'),
+  );
+}
+
+function userInviteEmailText(ctx: RouteContext, site: Site, user: OrganizationUser, token: string): string {
+  return truncateEmailText(
+    [
+      'Assistant SaaS admin invitation',
+      '',
+      `Site: ${site.name} (${site.id})`,
+      `Admin console: ${ctx.config.adminBaseUrl}`,
+      `API URL: ${ctx.config.publicBaseUrl}`,
+      `Name: ${user.name}`,
+      `Email: ${user.email}`,
+      `Role: ${user.role}`,
+      '',
+      'One-time access token:',
+      token,
+      '',
+      'Store this token securely. It is shown and sent only once. If it is lost, ask an owner to create a replacement user token.',
     ].join('\n'),
   );
 }
@@ -2148,7 +2213,7 @@ function normalizeDomain(value: string): string {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const config = loadConfig();
   const store = new FileStore(config.dataFile);
   createApiServer(config, store).listen(config.port, () => {

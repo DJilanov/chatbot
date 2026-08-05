@@ -1067,6 +1067,7 @@ Implemented in the repo:
 - Assistant eval release gate with deterministic cases for knowledge precedence, localized answers, pricing, handoff, lead capture, fallback, disabled knowledge, safe AI fallback, and unsafe operational-claim blocking.
 - GitHub Actions CI that runs type-check, build, tests, and assistant evals on `main` pushes and pull requests.
 - Resend-compatible email-provider boundary for lead and support-ticket notifications, with delivery results recorded in the action audit.
+- Admin identity endpoint, user last-seen tracking, and email invitations for newly created admin users when an email provider is configured.
 - Local landing page with live widget demo and lead form.
 - Deterministic local AI provider plus OpenAI/Gemini provider boundaries.
 - Regression tests for chat guardrails, file persistence, lead operations, support operations, lead webhook delivery, and email notification delivery.
@@ -1074,7 +1075,7 @@ Implemented in the repo:
 Still required before a serious paid launch:
 
 - Production database and migrations.
-- Production password/session auth, invitation emails, MFA, and password reset flow.
+- Production password/session auth, MFA, and password reset flow.
 - Payment-provider billing, hosted checkout, invoices, trial conversion, and subscription webhooks.
 - Production-grade email templates, bounce handling, sender-domain setup, and notification preferences.
 - CRM/helpdesk/calendar integrations.

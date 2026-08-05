@@ -72,6 +72,14 @@ Authorization: Bearer <token>
 
 The bootstrap token can create organizations and first users. User tokens are scoped to one organization and are returned only once when the user is created.
 
+### Current Identity
+
+```http
+GET /admin/me
+```
+
+Returns the current admin identity. Bootstrap requests return `{ "kind": "bootstrap", "user": null }`; user-token requests return the scoped user view and update `lastSeenAt`.
+
 Roles:
 
 ```text
@@ -248,9 +256,10 @@ Email notifications are disabled unless `EMAIL_PROVIDER=resend`, `EMAIL_PROVIDER
 EMAIL_PROVIDER=resend
 EMAIL_PROVIDER_API_KEY=re_xxx
 EMAIL_FROM="Assistant <notify@example.com>"
+ADMIN_BASE_URL=https://admin.example.com
 ```
 
-`EMAIL_PROVIDER_BASE_URL` is only needed for tests or proxying a compatible provider API.
+Lead and support-ticket notifications go to `config.contact.email`. Admin user invitations go to the created user's email and include the one-time access token. `EMAIL_PROVIDER_BASE_URL` is only needed for tests or proxying a compatible provider API.
 
 ## Local Demo
 

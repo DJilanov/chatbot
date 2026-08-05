@@ -38,6 +38,7 @@ async function createTestApi(configure?: {
   site?: (site: Site) => void;
   organization?: (org: Organization) => void;
   emailProvider?: EmailProvider;
+  adminBaseUrl?: string;
 }): Promise<TestApi> {
   const dir = await mkdtemp(join(tmpdir(), 'chatbot-api-'));
   const store = new FileStore(join(dir, 'data.json'));
@@ -74,6 +75,7 @@ async function createTestApi(configure?: {
     dataFile: join(dir, 'data.json'),
     adminToken: 'test-token',
     publicBaseUrl: 'http://127.0.0.1',
+    adminBaseUrl: configure?.adminBaseUrl ?? 'http://admin.test',
     integrationTimeoutMs: 1000,
     aiProvider: createAiProvider({ provider: 'null' }),
     emailProvider: configure?.emailProvider ?? new NullEmailProvider(),
@@ -378,6 +380,75 @@ test('support users can work leads but cannot update billing', async () => {
     assert.equal(billingResponse.status, 403);
   } finally {
     await api.close();
+  }
+});
+
+test('admin identity endpoint returns bootstrap and user identity', async () => {
+  const api = await createTestApi();
+  try {
+    const bootstrapResponse = await fetch(`${api.url}/admin/me`, {
+      headers: { Authorization: 'Bearer test-token' },
+    });
+    assert.equal(bootstrapResponse.status, 200);
+    const bootstrap = await json<Record<string, unknown>>(bootstrapResponse);
+    assert.equal(bootstrap['kind'], 'bootstrap');
+    assert.equal(bootstrap['user'], null);
+
+    const ownerUser = await createOrganizationUser(api.url, 'owner@example.com', 'owner');
+    const userResponse = await fetch(`${api.url}/admin/me`, {
+      headers: { Authorization: `Bearer ${ownerUser.token}` },
+    });
+    assert.equal(userResponse.status, 200);
+    const identity = await json<Record<string, unknown>>(userResponse);
+    assert.equal(identity['kind'], 'user');
+    const user = identity['user'] as Record<string, unknown>;
+    assert.equal(user['email'], 'owner@example.com');
+    assert.equal(user['role'], 'owner');
+    assert.equal('tokenHash' in user, false);
+    assert.equal(typeof user['lastSeenAt'], 'string');
+  } finally {
+    await api.close();
+  }
+});
+
+test('created users receive invitation emails when email provider is configured', async () => {
+  const receiver = await createEmailReceiver('email_invite_test');
+  const api = await createTestApi({
+    adminBaseUrl: 'http://admin.example.test',
+    emailProvider: new ResendEmailProvider('re_test', 'Assistant <notify@example.com>', receiver.url),
+  });
+  try {
+    const response = await fetch(`${api.url}/admin/sites/site_test/users`, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer test-token',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: 'Invite User',
+        email: 'invite@example.com',
+        role: 'support',
+      }),
+    });
+    assert.equal(response.status, 201);
+    const created = await json<OrganizationUserCreateResponse>(response);
+    assert.equal(receiver.requests.length, 1);
+    const payload = receiver.requests[0]?.payload;
+    assert.deepEqual(payload?.['to'], ['invite@example.com']);
+    assert.match(String(payload?.['subject']), /admin invitation/);
+    assert.match(String(payload?.['text']), /http:\/\/admin\.example\.test/);
+    assert.match(String(payload?.['text']), new RegExp(created.token));
+
+    const data = await api.store.read();
+    const delivery = data.actionLogs.find((item) => item.action === 'user_invite_email_delivery');
+    assert.equal(delivery?.status, 'completed');
+    assert.equal(delivery?.metadata['messageId'], 'email_invite_test');
+    assert.equal(delivery?.metadata['userId'], created.user.id);
+    assert.equal(delivery?.metadata['role'], 'support');
+    assert.equal(JSON.stringify(delivery?.metadata).includes(created.token), false);
+  } finally {
+    await api.close();
+    await receiver.close();
   }
 });
 

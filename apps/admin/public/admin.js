@@ -1,6 +1,10 @@
+const localDefaultToken =
+  window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'change-me' : '';
+
 const state = {
   apiUrl: localStorage.getItem('admin:apiUrl') || 'http://localhost:8787',
-  token: localStorage.getItem('admin:token') || 'change-me',
+  token: localStorage.getItem('admin:token') || localDefaultToken,
+  identity: null,
   organizations: [],
   sites: [],
   billingPlans: [],
@@ -45,20 +49,68 @@ function splitList(value) {
 }
 
 async function loadAll() {
-  const [organizations, sites, billingPlans] = await Promise.all([
+  const [identity, organizations, sites, billingPlans] = await Promise.all([
+    api('/admin/me'),
     api('/admin/organizations'),
     api('/admin/sites'),
     api('/admin/billing-plans'),
   ]);
+  state.identity = identity;
   state.organizations = organizations;
   state.sites = sites;
   state.billingPlans = billingPlans;
   if (!state.selectedSiteId && state.sites[0]) state.selectedSiteId = state.sites[0].id;
+  renderIdentity();
   renderOrganizations();
   renderBillingPlans();
   renderSites();
   await loadSelectedSite();
   setStatus('Connected.', 'ok');
+}
+
+function renderIdentity() {
+  const summary = qs('#identity-summary');
+  const signOut = qs('#sign-out-button');
+  signOut.hidden = !state.token;
+  if (!state.identity) {
+    summary.textContent = 'Not connected';
+    return;
+  }
+  if (state.identity.kind === 'bootstrap') {
+    summary.textContent = 'Connected as bootstrap admin';
+    return;
+  }
+  const user = state.identity.user;
+  if (!user) {
+    summary.textContent = 'Connected';
+    return;
+  }
+  summary.textContent = `Connected as ${user.name} (${user.role}) - ${user.email}`;
+}
+
+function clearWorkspace() {
+  state.identity = null;
+  state.organizations = [];
+  state.sites = [];
+  state.billingPlans = [];
+  state.selectedSiteId = '';
+  localStorage.removeItem('admin:selectedSiteId');
+  renderIdentity();
+  qs('#organization-select').innerHTML = '';
+  qs('#billing-plan-select').innerHTML = '';
+  qs('#site-list').innerHTML = '';
+  qs('#knowledge-count').textContent = '0 entries';
+  qs('#knowledge-list').innerHTML = '';
+  qs('#user-count').textContent = '0 users';
+  qs('#user-list').innerHTML = '';
+  qs('#created-token').hidden = true;
+  qs('#lead-list').innerHTML = '';
+  qs('#support-ticket-list').innerHTML = '';
+  qs('#action-list').innerHTML = '';
+  qs('#billing-usage').innerHTML = '';
+  qs('#billing-status').textContent = '-';
+  qs('#privacy-result').innerHTML = '';
+  renderAnalytics({ conversations: 0, messages: 0, leads: 0, handoffs: 0 });
 }
 
 function renderOrganizations() {
@@ -569,6 +621,7 @@ function renderCreatedToken(response) {
   output.innerHTML = `
     <strong>${escapeHtml(response.user.email)} access token</strong>
     <code>${escapeHtml(response.token)}</code>
+    <p>Shown once. If email notifications are configured, an invitation email was also sent.</p>
   `;
 }
 
@@ -617,6 +670,7 @@ function cssEscape(value) {
 
 qs('#api-url').value = state.apiUrl;
 qs('#admin-token').value = state.token;
+renderIdentity();
 qs('#connection-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   state.apiUrl = qs('#api-url').value.replace(/\/+$/, '');
@@ -628,6 +682,13 @@ qs('#connection-form').addEventListener('submit', async (event) => {
   } catch (error) {
     setStatus(error.message, 'error');
   }
+});
+qs('#sign-out-button').addEventListener('click', () => {
+  state.token = '';
+  localStorage.removeItem('admin:token');
+  qs('#admin-token').value = '';
+  clearWorkspace();
+  setStatus('Signed out.', '');
 });
 qs('#organization-form').addEventListener('submit', (event) => {
   void createOrganization(event).catch((error) => setStatus(error.message, 'error'));

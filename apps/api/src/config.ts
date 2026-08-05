@@ -6,6 +6,7 @@ export interface ApiConfig {
   dataFile: string;
   adminToken: string;
   publicBaseUrl: string;
+  adminBaseUrl: string;
   integrationTimeoutMs: number;
   aiProvider: AiProvider;
   emailProvider: EmailProvider;
@@ -19,6 +20,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     dataFile: env['DATA_FILE']?.trim() || '.data/chatbot-dev.json',
     adminToken: env['ADMIN_TOKEN']?.trim() || 'change-me',
     publicBaseUrl: env['PUBLIC_BASE_URL']?.trim() || `http://localhost:${port}`,
+    adminBaseUrl: env['ADMIN_BASE_URL']?.trim() || 'http://localhost:4174',
     integrationTimeoutMs: parseInteger(env['INTEGRATION_TIMEOUT_MS'], 5000),
     aiProvider: createAiProvider({
       provider,
