@@ -93,7 +93,7 @@ function normalizeAppData(value: Partial<AppData>): AppData {
     productItems: Array.isArray(value.productItems) ? value.productItems.map(normalizeProductItem) : [],
     conversations: Array.isArray(value.conversations) ? value.conversations : [],
     messages: Array.isArray(value.messages) ? value.messages : [],
-    leads: Array.isArray(value.leads) ? value.leads : [],
+    leads: Array.isArray(value.leads) ? value.leads.map(normalizeLead) : [],
     supportTickets: Array.isArray(value.supportTickets) ? value.supportTickets : [],
     actionLogs: Array.isArray(value.actionLogs) ? value.actionLogs : [],
     usageEvents: Array.isArray(value.usageEvents) ? value.usageEvents : [],
@@ -149,6 +149,13 @@ function normalizeSite(site: Site): Site {
   return {
     ...site,
     config: normalizeSiteConfig(site.config),
+  };
+}
+
+function normalizeLead(lead: Lead): Lead {
+  return {
+    ...lead,
+    duplicateOfLeadId: typeof lead.duplicateOfLeadId === 'string' && lead.duplicateOfLeadId.trim() ? lead.duplicateOfLeadId : null,
   };
 }
 

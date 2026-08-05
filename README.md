@@ -13,6 +13,10 @@ The repo currently contains the first MVP implementation:
 - `Plan.md`: product, roadmap, landing page, and SaaS feature plan.
 - `docs/LANDING_PAGE.md`: focused landing page sales structure and remaining proof assets.
 - `docs/EVALS.md`: assistant quality and safety evaluation suite.
+- `docs/SALES_KIT.md`: Bulgarian pilot offer, demo flow, pricing hypothesis, and objection handling.
+- `docs/PILOT_RUNBOOK.md`: 30-day pilot setup, cadence, metrics, and report template.
+- `docs/INTEGRATION_ROADMAP.md`: ecommerce, CRM, helpdesk, calendar, and channel expansion sequence.
+- `docs/PRODUCTION_EMAIL_SMOKE.md`: production demo-lead and email-delivery validation command.
 
 ## Local Setup
 
@@ -60,6 +64,14 @@ npm run assistant:eval
 
 GitHub Actions runs these checks on pushes to `main` and on pull requests.
 
+Validate the deployed demo lead/email path after production deploys:
+
+```bash
+CHATBOT_BASE_URL=https://chatbot.jilanov.com CHATBOT_SITE_ID=site_demo npm run smoke:production-demo
+```
+
+Run it with production environment variables loaded so `ADMIN_TOKEN` and email provider settings are available.
+
 ## Admin API
 
 Admin routes require:
@@ -99,6 +111,6 @@ After building `packages/widget`, host `packages/widget/dist/widget.js` on your 
 
 ## Implementation Status
 
-This is an MVP foundation. It implements the Lead Assistant path first: site config, scoped admin users and roles, knowledge answers, conversations, lead capture, lead status workflow, CSV lead export, handoff tickets, webhook and email delivery hooks, plan limits, billing summaries, privacy export/erasure/retention controls, analytics, action audit, assistant evals, and embeddable widget.
+This is an MVP foundation. It implements the Lead Assistant path first: site config, scoped admin users and roles, knowledge answers, conversations, lead capture, duplicate lead detection, lead status workflow, CSV lead export, handoff tickets, webhook and email delivery hooks, plan limits, billing summaries, privacy export/erasure/retention controls, analytics, action audit, assistant evals, and embeddable widget.
 
 Commerce adapters, payment-provider billing, password/session auth, automated retention scheduling, richer notification templates, and advanced CRM/helpdesk integrations remain roadmap items in `Plan.md`.

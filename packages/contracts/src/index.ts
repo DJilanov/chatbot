@@ -419,6 +419,7 @@ export interface Lead {
   id: string;
   siteId: string;
   conversationId: string | null;
+  duplicateOfLeadId: string | null;
   status: LeadStatus;
   name: string | null;
   email: string | null;

@@ -765,6 +765,76 @@ h3 {
   font-weight: 900;
 }
 
+.pilot-program {
+  max-width: none;
+  background: #fff;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.pilot-program .section-heading,
+.pilot-layout {
+  max-width: 1180px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.pilot-layout {
+  display: grid;
+  grid-template-columns: 1.25fr 0.75fr;
+  gap: 18px;
+  align-items: stretch;
+}
+
+.pilot-tracks {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.pilot-tracks article,
+.proof-metrics {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 22px;
+}
+
+.pilot-tracks span {
+  display: inline-flex;
+  margin-bottom: 26px;
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: #0f5132;
+  background: #dcfce7;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.pilot-tracks p,
+.proof-metrics li {
+  color: var(--muted);
+  line-height: 1.58;
+}
+
+.proof-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: #eef4ff;
+}
+
+.proof-metrics ul {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.proof-metrics .button {
+  margin-top: auto;
+}
+
 .pricing-grid article {
   min-height: 250px;
   flex-direction: column;
@@ -924,7 +994,9 @@ h3 {
   .product-tour,
   .tour-columns,
   .surface-grid,
-  .local-grid {
+  .local-grid,
+  .pilot-layout,
+  .pilot-tracks {
     grid-template-columns: 1fr;
   }
 

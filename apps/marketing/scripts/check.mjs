@@ -21,6 +21,8 @@ for (const text of [
   'AI assistant',
   'Try live assistant',
   'For Bulgaria',
+  '30-day pilot',
+  'Start pilot',
   'from 99 BGN/month',
 ]) {
   if (!html.includes(text)) throw new Error(`Missing landing copy: ${text}`);

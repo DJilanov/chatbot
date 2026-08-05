@@ -349,6 +349,7 @@
           'Чатботът не е продуктът. Резултатът е.',
         'A safer pitch for companies that cannot afford hallucinated operations':
           'По-сигурен аргумент за компании, които не могат да си позволят измислени операции',
+        '30-day pilot': '30-дневен пилот',
         'Action audit': 'Журнал на действията',
         'Action logs show status, confidence, reason, source text, reply, and review notes.':
           'Журналите показват статус, увереност, причина, източник, отговор и бележки от преглед.',
@@ -372,6 +373,7 @@
         'Book a demo submissions become qualified leads and send an owner email with page, language, and qualification details.':
           'Заявките за демо стават квалифицирани лийдове и изпращат email към собственика със страница, език и квалификационни детайли.',
         'Book a demo': 'Запази демо',
+        B2B: 'B2B',
         BG: 'BG',
         'Bulgarian language quality': 'Качество на български език',
         'Bulgarian market': 'Български пазар',
@@ -398,8 +400,12 @@
         'Commerce Assistant': 'Commerce Assistant',
         'Common buyer objections': 'Чести възражения от купувачи',
         'Company': 'Фирма',
+        'Company qualification, website URL, goal, timeline, lead review, and CRM-ready export.':
+          'Квалификация на фирма, URL на сайта, цел, срок, преглед на лийда и CRM-ready експорт.',
         'Compare visible products by processor, display, memory, storage, grade, or custom specs':
           'Сравнява видими продукти по процесор, дисплей, памет, диск, клас или специфични характеристики',
+        'Conversations, leads, duplicate leads, and support handoffs':
+          'Разговори, лийдове, дублирани лийдове и предавания към поддръжка',
         'Configure sites, edit knowledge, review leads, inspect analytics, and diagnose assistant decisions.':
           'Настройвате сайтове, редактирате знания, преглеждате лийдове, следите аналитика и диагностицирате решенията на асистента.',
         'Connect the systems customers already use':
@@ -417,6 +423,8 @@
         'Ecommerce flow': 'Ecommerce процес',
         'Ecommerce platform': 'Ecommerce платформа',
         'Email': 'Email',
+        'Email delivery, action audit status, and weekly knowledge updates':
+          'Email доставка, статус в журнала на действията и седмични обновявания на знанията',
         'Email + webhooks': 'Email + webhooks',
         'Embed an AI assistant that answers from approved knowledge, captures leads, recommends products, routes support, and keeps an action audit trail.':
           'Вградете AI асистент, който отговаря от одобрени знания, събира лийдове, препоръчва продукти, насочва поддръжка и пази журнал на действията.',
@@ -425,6 +433,8 @@
         'Everything a business needs after the first chat message':
           'Всичко, от което бизнесът има нужда след първото чат съобщение',
         'FAQ': 'FAQ',
+        'FAQ answers, pricing or appointment routing, contact capture, owner email, and support handoff.':
+          'FAQ отговори, насочване към цена или среща, събиране на контакт, email към собственика и support handoff.',
         'FAQ answers, lead qualification, contact capture, meeting/demo routing, email notifications, webhooks, and analytics.':
           'FAQ отговори, квалификация на лийдове, събиране на контакти, насочване към среща/демо, email известия, webhooks и аналитика.',
         'Find products by brand, model, SKU, category, price, availability, and attributes':
@@ -463,6 +473,7 @@
           'Дайте на купувачите да пробват продукта преди демо',
         'Limited transcript': 'Ограничен transcript',
         'Live demo': 'Демо',
+        'Local service business': 'Локален бизнес с услуги',
         'Main goal': 'Основна цел',
         'Made for businesses that want results, not another experiment':
           'Създаден за бизнеси, които искат резултати, не пореден експеримент',
@@ -485,11 +496,13 @@
         'Official answers': 'Официални отговори',
         'Often guesses': 'Често гадае',
         'One script': 'Един скрипт',
+        'Online store': 'Онлайн магазин',
         'Online stores': 'Онлайн магазини',
         'OpenCart planned': 'OpenCart планирано',
         'Paste the widget tag into the customer website or deploy through a tag manager.':
           'Поставете widget tag в сайта на клиента или го добавете през tag manager.',
         'Phone': 'Телефон',
+        Pilot: 'Пилот',
         'Pricing': 'Цени',
         'Pricing answer plus contact prompt':
           'Отговор за цени плюс покана за контакт',
@@ -497,8 +510,12 @@
           'Пилотните цени са начални ориентири. Финалната оферта зависи от сайта, обема знания, трафика, интеграциите и дали искате ние да управляваме асистента.',
         'Privacy and AI transparency': 'Поверителност и AI прозрачност',
         'Product': 'Продукт',
+        'Product clicks, comparisons, checkout handoffs, and missed answers':
+          'Кликове върху продукти, сравнения, checkout handoff-и и липсващи отговори',
         'Product discovery, product cards, comparison, cart and checkout handoff, return/warranty/order support routing.':
           'Откриване на продукти, продуктови карти, сравнение, предаване към количка и checkout, насочване за връщания, гаранции и поръчки.',
+        'Product feed, product cards, comparison, checkout handoff, and return/warranty support routing.':
+          'Продуктов фийд, продуктови карти, сравнение, checkout handoff и насочване за връщане/гаранция.',
         'Product overview': 'Преглед на продукта',
         'Product surfaces buyers can inspect during the demo':
           'Продуктови повърхности, които купувачите могат да видят по време на демо',
@@ -506,6 +523,7 @@
         'Product-aware answers with safe action boundaries':
           'Отговори с продуктово знание и сигурни граници за действия',
         'Prompt-dependent': 'Зависи от prompt-а',
+        'Quote or demo website': 'Сайт за оферти или демо',
         'Recommend products': 'Препоръчване на продукти',
         'Reduce support load': 'Намаляване на поддръжката',
         'Resend email notifications': 'Resend email известия',
@@ -524,6 +542,7 @@
           'Виждате защо асистентът е отговорил, поискал контакт, създал предаване към екип или блокирал заявка.',
         'Send lead and support handoff notifications by email and webhooks.':
           'Изпращайте известия за лийдове и поддръжка по email и webhooks.',
+        Services: 'Услуги',
         'Set domain allowlist, languages, assistant name, colors, and privacy settings.':
           'Настройте разрешени домейни, езици, име на асистента, цветове и поверителност.',
         'Setup, knowledge writing, monthly QA, safety tuning, product-feed checks, and optimization.':
@@ -537,6 +556,9 @@
           'Показва продуктови карти със снимка, URL, цена, наличност, варианти и причина за препоръка',
         'Show the complete assistant loop in one glance':
           'Покажете целия цикъл на асистента с един поглед',
+        'Start pilot': 'Стартирай пилот',
+        'Start with three controlled pilots: one online store, one service business, and one B2B website. Each pilot should prove real conversations, captured leads, staff handoffs, email delivery, and the unanswered questions that become the next knowledge update.':
+          'Започнете с три контролирани пилота: един онлайн магазин, един бизнес с услуги и един B2B сайт. Всеки пилот трябва да докаже реални разговори, събрани лийдове, предавания към екипа, email доставка и неотговорени въпроси, които стават следващото обновяване на знанията.',
         'Start with leads. Upgrade to commerce.':
           'Започнете с лийдове. Надградете към commerce.',
         'Start with leads, then add product feeds, product cards, comparison, checkout handoff, and support routing.':
@@ -564,6 +586,8 @@
         'The visitor experience defaults to Bulgarian and switches to English when the browser asks for it.':
           'Потребителското изживяване започва на български и превключва към английски, когато браузърът го поиска.',
         'Try live assistant': 'Пробвай асистента',
+        'Turn first installs into proof you can sell':
+          'Превърнете първите внедрявания в доказателство, което продава',
         'This month': 'Този месец',
         'This week': 'Тази седмица',
         'Timeline': 'Срок',
@@ -582,6 +606,7 @@
         'Website widget': 'Website widget',
         'What does it cost for my store?': 'Колко ще струва за моя магазин?',
         'What does the assistant do?': 'Какво прави асистентът?',
+        'What we measure': 'Какво измерваме',
         'Why this beats a generic chatbot plugin':
           'Защо това е по-добро от стандартен chatbot plugin',
         'Will it invent prices or order information?':

@@ -42,6 +42,8 @@ for (const text of [
   'updateLeadStatus',
   'updateSupportTicketStatus',
   'exportLeads',
+  'duplicateOfLeadId',
+  'lead_duplicate_detected',
   'renderBilling',
   'renderUsers',
   'renderIdentity',

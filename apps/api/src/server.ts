@@ -1170,10 +1170,33 @@ async function handlePublicChat(ctx: RouteContext, site: Site): Promise<void> {
         phone: contact.phone,
         consentAt: body.consent ? nowIso() : null,
       });
+      const duplicate = duplicateLeadMatch(data.leads, lead);
+      if (duplicate) lead.duplicateOfLeadId = duplicate.lead.id;
       leadId = lead.id;
       createdLead = lead;
       data.leads.push(lead);
       data.usageEvents.push(newUsageEvent(storedSite.id, 'lead', 1));
+      if (duplicate) {
+        data.actionLogs.push(
+          newActionLog({
+            siteId: storedSite.id,
+            conversationId: targetConversation.id,
+            action: 'lead_duplicate_detected',
+            status: 'completed',
+            confidence: 'deterministic',
+            locale,
+            sourceText: message,
+            reply: null,
+            reason: `Lead matched an existing ${duplicate.match}`,
+            metadata: {
+              leadId: lead.id,
+              duplicateOfLeadId: duplicate.lead.id,
+              duplicateMatch: duplicate.match,
+            },
+          }),
+        );
+        data.usageEvents.push(newUsageEvent(storedSite.id, 'action', 1));
+      }
     }
 
     if (result.needsHuman) {
@@ -1239,6 +1262,8 @@ async function handlePublicLead(ctx: RouteContext, site: Site): Promise<void> {
   await ctx.store.update((data) => {
     const storedSite = findEnabledSite(data, site.id);
     enforceBillingUsage(data, storedSite.organizationId, [{ key: 'monthlyLeads', quantity: 1 }]);
+    const duplicate = duplicateLeadMatch(data.leads, lead);
+    if (duplicate) lead.duplicateOfLeadId = duplicate.lead.id;
     data.leads.push(lead);
     data.actionLogs.push(
       newActionLog({
@@ -1251,9 +1276,34 @@ async function handlePublicLead(ctx: RouteContext, site: Site): Promise<void> {
         sourceText: message,
         reply: null,
         reason: null,
-        metadata: { hasEmail: Boolean(lead.email), hasPhone: Boolean(lead.phone) },
+        metadata: {
+          hasEmail: Boolean(lead.email),
+          hasPhone: Boolean(lead.phone),
+          duplicateOfLeadId: lead.duplicateOfLeadId,
+          duplicateMatch: duplicate?.match ?? null,
+        },
       }),
     );
+    if (duplicate) {
+      data.actionLogs.push(
+        newActionLog({
+          siteId: site.id,
+          conversationId: lead.conversationId,
+          action: 'lead_duplicate_detected',
+          status: 'completed',
+          confidence: 'deterministic',
+          locale,
+          sourceText: message,
+          reply: null,
+          reason: `Lead matched an existing ${duplicate.match}`,
+          metadata: {
+            leadId: lead.id,
+            duplicateOfLeadId: duplicate.lead.id,
+            duplicateMatch: duplicate.match,
+          },
+        }),
+      );
+    }
     const conversation = lead.conversationId
       ? data.conversations.find((item) => item.id === lead.conversationId && item.siteId === site.id)
       : null;
@@ -1261,7 +1311,7 @@ async function handlePublicLead(ctx: RouteContext, site: Site): Promise<void> {
       conversation.status = 'lead';
       conversation.updatedAt = nowIso();
     }
-    data.usageEvents.push(newUsageEvent(site.id, 'lead', 1), newUsageEvent(site.id, 'action', 1));
+    data.usageEvents.push(newUsageEvent(site.id, 'lead', 1), newUsageEvent(site.id, 'action', duplicate ? 2 : 1));
   });
 
   await dispatchLeadWebhook(ctx, site, lead);
@@ -1733,6 +1783,7 @@ function newLead(input: {
     id: createId('lead'),
     siteId: input.siteId,
     conversationId: input.conversationId,
+    duplicateOfLeadId: null,
     status: 'new',
     name: input.name ?? null,
     email: input.email ?? null,
@@ -1745,6 +1796,27 @@ function newLead(input: {
     createdAt: timestamp,
     updatedAt: timestamp,
   };
+}
+
+function duplicateLeadMatch(leads: Lead[], lead: Lead): { lead: Lead; match: 'email' | 'phone' } | null {
+  const email = lead.email?.trim().toLowerCase() || null;
+  const phone = normalizePhoneForMatch(lead.phone);
+  const existing = leads
+    .filter((item) => item.siteId === lead.siteId)
+    .slice()
+    .reverse();
+
+  for (const item of existing) {
+    if (email && item.email?.trim().toLowerCase() === email) return { lead: item, match: 'email' };
+    if (phone && normalizePhoneForMatch(item.phone) === phone) return { lead: item, match: 'phone' };
+  }
+
+  return null;
+}
+
+function normalizePhoneForMatch(value: string | null | undefined): string | null {
+  const digits = value?.replace(/\D/g, '') ?? '';
+  return digits.length >= 7 ? digits : null;
 }
 
 function newSupportTicket(input: {
@@ -1819,6 +1891,7 @@ function leadsCsv(leads: Lead[]): string {
   const headers = [
     'id',
     'status',
+    'duplicateOfLeadId',
     'name',
     'email',
     'phone',
@@ -1836,6 +1909,7 @@ function leadsCsv(leads: Lead[]): string {
     .map((lead) => [
       lead.id,
       lead.status,
+      lead.duplicateOfLeadId,
       lead.name,
       lead.email,
       lead.phone,

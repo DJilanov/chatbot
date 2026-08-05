@@ -1086,6 +1086,9 @@ Implemented in the repo:
 - Public chat product recommendations that return product cards with image, price, availability, product URL, recommendation reason, and product-click audit events.
 - Product comparison responses for imported products, with product cards, comparison rows, and a widget compare button for multi-product results.
 - Safe checkout/cart handoff boundaries that route purchase intent to product pages, label the CTA separately, and audit handoff clicks without claiming cart or order changes.
+- Duplicate lead detection for repeated email/phone submissions, with `duplicateOfLeadId`, admin visibility, CSV export coverage, and `lead_duplicate_detected` audit events.
+- Commercial operating docs for sales pitch, pilot onboarding, integration expansion, and production demo/email smoke validation.
+- Repeatable production demo/email smoke script that submits a demo-style lead, verifies admin visibility and email-delivery audit, then marks the smoke lead as spam.
 
 Still required before a serious paid launch:
 
@@ -1154,7 +1157,7 @@ Must build next:
 - Missing-answer analytics and weekly summaries generated from failed or low-confidence conversations.
 - Native product feed API connectors for WooCommerce, OpenCart, Shopify, CloudCart, and Jilanov ecommerce.
 - Safe ecommerce actions beyond handoff: platform cart API adapters, order-status routing, return/warranty/invoice routing, and staff fallback when system data is missing.
-- CRM and sales operations: HubSpot, Pipedrive, Zoho, email notifications, webhook delivery, calendar/demo booking, duplicate lead detection, and lead summaries.
+- CRM and sales operations: HubSpot, Pipedrive, Zoho, webhook retries, calendar/demo booking, CRM lead summaries, and two-way status sync after pilot demand.
 - Channel expansion after website proof: Viber, Messenger, WhatsApp, Instagram, email, and Slack/Teams notifications.
 - Admin support queue with ticket status, transcript, reason, source URL, language, internal notes, assignment, and SLA.
 - Analytics focused on business value: leads, qualified leads, unanswered questions, handoffs, product clicks, checkout handoffs, negative feedback, language split, top pages, and estimated saved support time.
@@ -1232,6 +1235,7 @@ Copy principles:
    - PDF/DOCX knowledge import. Completed as a reviewed draft workflow.
    - Missing-answer queue. Completed in the current admin/API slice.
    - Product feed ingestion, product cards, product comparison, and checkout/cart handoff boundaries. Completed for pasted CSV/JSON and public feed URLs with read-only product recommendations, comparison tables, and safe product-page routing.
+   - Duplicate lead detection. Completed for repeated email/phone submissions with admin, CSV, and audit visibility.
    - CRM/calendar integration.
    - Viber/Messenger roadmap.
 
@@ -1248,7 +1252,8 @@ Copy principles:
 
 ## Immediate Next Steps
 
-1. Capture real product screenshots from the deployed widget, admin lead inbox, missing-answer queue, action audit, and owner email notification.
-2. Start 3 pilot installs: one ecommerce store, one service business, and one B2B website.
-3. Add native ecommerce platform API connectors and deeper order/return/warranty routing based on pilot demand.
-4. Add CRM/calendar integrations and then Viber/Messenger channels after the website assistant has measurable pilot results.
+1. Run the production demo/email smoke command after each deploy and manually confirm the owner inbox plus SPF/DKIM/DMARC sender status.
+2. Capture real product screenshots from the deployed widget, admin lead inbox, missing-answer queue, action audit, and owner email notification.
+3. Start 3 pilot installs using `docs/PILOT_RUNBOOK.md`: one ecommerce store, one service business, and one B2B website.
+4. Add native ecommerce platform API connectors and deeper order/return/warranty routing based on pilot demand.
+5. Add CRM/calendar integrations and then Viber/Messenger channels after the website assistant has measurable pilot results.

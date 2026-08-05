@@ -166,6 +166,8 @@ const adminTranslations = {
     'No missing answers to review.': 'Няма липсващи отговори за преглед.',
     'No users yet.': 'Все още няма потребители.',
     'No leads yet.': 'Все още няма запитвания.',
+    Duplicate: 'Дубликат',
+    'Duplicate of {leadId}': 'Дубликат на {leadId}',
     'No support tickets yet.': 'Все още няма тикети за поддръжка.',
     'No actions yet.': 'Все още няма действия.',
     'CSV rows were skipped.': 'CSV реда бяха пропуснати.',
@@ -223,6 +225,7 @@ const adminTranslations = {
     fallback: 'fallback',
     negative_feedback: 'негативна оценка',
     failed_action: 'неуспешно действие',
+    lead_duplicate_detected: 'засечено дублирано запитване',
     product_feed_import: 'импорт на продукти',
     product_feed_url_import: 'импорт на продукти от URL',
     product_recommendation: 'препоръка на продукт',
@@ -708,8 +711,10 @@ function renderLeads(leads) {
             <div class="record-heading">
               <strong>${escapeHtml(lead.email || lead.phone || lead.name || t('Lead'))}</strong>
               <span class="pill">${escapeHtml(translatedLabel(lead.status))}</span>
+              ${lead.duplicateOfLeadId ? `<span class="pill">${escapeHtml(t('Duplicate'))}</span>` : ''}
             </div>
             <p>${escapeHtml(lead.message)}</p>
+            ${lead.duplicateOfLeadId ? `<p>${escapeHtml(t('Duplicate of {leadId}', { leadId: lead.duplicateOfLeadId }))}</p>` : ''}
             <p>${escapeHtml(dateTime(lead.createdAt))}</p>
             <div class="record-actions">
               <select data-lead-status="${escapeHtml(lead.id)}">

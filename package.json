@@ -13,6 +13,7 @@
     "type-check": "npm --workspace @chatbot/contracts run build && npm --workspace @chatbot/ai run build && npm --workspace @chatbot/api run type-check && npm --workspace @chatbot/widget run type-check && npm --workspace @chatbot/admin run type-check && npm --workspace @chatbot/marketing run type-check",
     "test": "npm --workspace @chatbot/api run test",
     "assistant:eval": "npm --workspace @chatbot/api run eval",
+    "smoke:production-demo": "node scripts/production-demo-smoke.mjs",
     "seed:dev": "node scripts/seed-dev.mjs",
     "dev:api": "npm --workspace @chatbot/api run dev",
     "dev:admin": "npm --workspace @chatbot/admin run dev",

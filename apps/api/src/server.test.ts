@@ -659,6 +659,54 @@ test('admin can update lead status and export leads as CSV', async () => {
   }
 });
 
+test('public leads flag duplicate email submissions for sales review', async () => {
+  const api = await createTestApi();
+  try {
+    const firstResponse = await fetch(`${api.url}/public/sites/site_test/leads`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: 'repeat@example.com',
+        message: 'First demo request',
+        consent: true,
+      }),
+    });
+    assert.equal(firstResponse.status, 201);
+    const first = await json<LeadResponse>(firstResponse);
+
+    const secondResponse = await fetch(`${api.url}/public/sites/site_test/leads`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: 'REPEAT@example.com',
+        message: 'Second demo request',
+        consent: true,
+      }),
+    });
+    assert.equal(secondResponse.status, 201);
+    const second = await json<LeadResponse>(secondResponse);
+    assert.notEqual(second.leadId, first.leadId);
+
+    const data = await api.store.read();
+    const duplicateLead = data.leads.find((lead) => lead.id === second.leadId);
+    assert.equal(duplicateLead?.duplicateOfLeadId, first.leadId);
+    const duplicateAction = data.actionLogs.find((action) => action.action === 'lead_duplicate_detected');
+    assert.equal(duplicateAction?.metadata['leadId'], second.leadId);
+    assert.equal(duplicateAction?.metadata['duplicateOfLeadId'], first.leadId);
+    assert.equal(duplicateAction?.metadata['duplicateMatch'], 'email');
+
+    const exportResponse = await fetch(`${api.url}/admin/sites/site_test/leads/export`, {
+      headers: { Authorization: 'Bearer test-token' },
+    });
+    assert.equal(exportResponse.status, 200);
+    const csv = await exportResponse.text();
+    assert.match(csv, /duplicateOfLeadId/);
+    assert.match(csv, new RegExp(first.leadId));
+  } finally {
+    await api.close();
+  }
+});
+
 test('admin can update support ticket status', async () => {
   const api = await createTestApi();
   try {
@@ -1152,6 +1200,7 @@ test('admin can export and erase privacy subject data', async () => {
         id: 'lead_privacy',
         siteId: 'site_test',
         conversationId: 'conv_privacy',
+        duplicateOfLeadId: null,
         status: 'new',
         name: 'Privacy Person',
         email: 'privacy@example.com',
@@ -1262,6 +1311,7 @@ test('admin can run site retention cleanup', async () => {
         id: 'lead_old',
         siteId: 'site_test',
         conversationId: 'conv_old',
+        duplicateOfLeadId: null,
         status: 'new',
         name: 'Old Lead',
         email: 'old@example.com',
