@@ -31,11 +31,9 @@
   function bindChatButtons() {
     document.querySelectorAll('[data-open-chat]').forEach((button) => {
       button.addEventListener('click', () => {
-        if (window.Chatbot) {
-          window.Chatbot.open();
-          return;
-        }
-        document.querySelector('#demo-live')?.scrollIntoView({ behavior: 'smooth' });
+        void runWithChatbot(button, async (chatbot) => {
+          chatbot.open();
+        });
       });
     });
 
@@ -43,12 +41,10 @@
       button.addEventListener('click', () => {
         const prompt = button.getAttribute('data-demo-prompt') || '';
         if (!prompt) return;
-        if (window.Chatbot) {
-          window.Chatbot.open();
-          void window.Chatbot.send(prompt);
-          return;
-        }
-        setTemporaryButtonText(button, message('startApiFirst'));
+        void runWithChatbot(button, async (chatbot) => {
+          chatbot.open();
+          await chatbot.send(prompt);
+        });
       });
     });
   }
@@ -111,13 +107,90 @@
       if (!response.ok) throw new Error(`lead_failed_${response.status}`);
       formElement.reset();
       setStatus(statusElement, message('demoSent'), 'success');
-      if (window.Chatbot) {
-        window.Chatbot.open();
-        void window.Chatbot.send(message('bookedDemoChat', { email }));
-      }
+      void waitForChatbot()
+        .then((chatbot) => {
+          chatbot.open();
+          return chatbot.send(message('bookedDemoChat', { email }));
+        })
+        .catch(() => undefined);
     } catch {
       setStatus(statusElement, message('demoApiUnavailable'), 'error');
     }
+  }
+
+  async function runWithChatbot(button, action) {
+    const originalText = button.textContent;
+    let failed = false;
+    setButtonBusy(button, message('assistantLoading'));
+    try {
+      const chatbot = await waitForChatbot();
+      await action(chatbot);
+    } catch {
+      failed = true;
+      clearButtonBusy(button, originalText);
+      setTemporaryButtonText(button, message('assistantUnavailable'));
+      document.querySelector('#demo-live')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } finally {
+      if (!failed) clearButtonBusy(button, originalText);
+    }
+  }
+
+  function waitForChatbot() {
+    const current = getReadyChatbot();
+    if (current) return Promise.resolve(current);
+
+    return new Promise((resolve, reject) => {
+      const startedAt = Date.now();
+      const timeoutMs = 8000;
+      let intervalId = 0;
+
+      const cleanup = () => {
+        window.removeEventListener('chatbot:ready', onReady);
+        if (intervalId) window.clearInterval(intervalId);
+      };
+
+      const resolveIfReady = () => {
+        const chatbot = getReadyChatbot();
+        if (!chatbot) return false;
+        cleanup();
+        resolve(chatbot);
+        return true;
+      };
+
+      const onReady = () => {
+        resolveIfReady();
+      };
+
+      window.addEventListener('chatbot:ready', onReady);
+      intervalId = window.setInterval(() => {
+        if (resolveIfReady()) return;
+        if (Date.now() - startedAt >= timeoutMs) {
+          cleanup();
+          reject(new Error('chatbot_not_ready'));
+        }
+      }, 100);
+
+      resolveIfReady();
+    });
+  }
+
+  function getReadyChatbot() {
+    const chatbot = window.Chatbot;
+    if (!chatbot || typeof chatbot.open !== 'function' || typeof chatbot.send !== 'function') return null;
+    if (typeof chatbot.isReady === 'function' && !chatbot.isReady()) return null;
+    return chatbot;
+  }
+
+  function setButtonBusy(button, text) {
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    button.textContent = text;
+  }
+
+  function clearButtonBusy(button, originalText) {
+    button.disabled = false;
+    button.removeAttribute('aria-busy');
+    if (originalText) button.textContent = originalText;
   }
 
   function demoRequestMessage(values) {
@@ -298,7 +371,8 @@
         demoSent: 'Demo request sent. We will contact you shortly.',
         missingContact: 'Please add your name and email.',
         sendingDemo: 'Sending demo request...',
-        startApiFirst: 'Start API first',
+        assistantLoading: 'Opening assistant...',
+        assistantUnavailable: 'The assistant is still loading. Please try again.',
       },
       attributes: {},
       text: {},
@@ -316,7 +390,8 @@
         demoSent: 'Заявката за демо е изпратена. Ще се свържем с вас скоро.',
         missingContact: 'Моля, добавете име и email.',
         sendingDemo: 'Изпращане на заявката за демо...',
-        startApiFirst: 'Стартирайте API',
+        assistantLoading: 'Отварям асистента...',
+        assistantUnavailable: 'Асистентът още се зарежда. Опитайте отново.',
       },
       attributes: {
         alt: {

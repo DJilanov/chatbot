@@ -82,6 +82,7 @@ interface ChatbotWindow extends Window {
     close: () => void;
     send: (message: string) => Promise<void>;
     setLocale: (locale: string) => Promise<void>;
+    isReady: () => boolean;
     on: (eventName: string, handler: (payload: unknown) => void) => void;
   };
 }
@@ -204,6 +205,7 @@ const persisted: PersistedState = {
     setLocale: async (locale: string) => {
       await setLocale(locale);
     },
+    isReady: () => Boolean(config),
     on: (eventName: string, handler: (payload: unknown) => void) => {
       const current = handlers.get(eventName) ?? [];
       current.push(handler);
@@ -649,6 +651,7 @@ const persisted: PersistedState = {
 
   function emit(eventName: string, payload: unknown): void {
     for (const handler of handlers.get(eventName) ?? []) handler(payload);
+    window.dispatchEvent(new CustomEvent(`chatbot:${eventName}`, { detail: payload }));
   }
 })();
 

@@ -63,6 +63,7 @@ const persisted = {
         setLocale: async (locale) => {
             await setLocale(locale);
         },
+        isReady: () => Boolean(config),
         on: (eventName, handler) => {
             const current = handlers.get(eventName) ?? [];
             current.push(handler);
@@ -489,6 +490,7 @@ const persisted = {
     function emit(eventName, payload) {
         for (const handler of handlers.get(eventName) ?? [])
             handler(payload);
+        window.dispatchEvent(new CustomEvent(`chatbot:${eventName}`, { detail: payload }));
     }
 })();
 function readState(key) {

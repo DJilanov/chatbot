@@ -40,6 +40,8 @@ for (const text of [
   'rel="canonical"',
   'application/ld+json',
   'https://chatbot.jilanov.com/assets/hero-assistant-dashboard.png',
+  'data-cfasync="false"',
+  'defer',
 ]) {
   if (!html.includes(text)) throw new Error(`Missing landing copy: ${text}`);
 }
@@ -53,12 +55,19 @@ for (const text of [
   'submitDemoForm',
   '/public/sites/',
   'CHATBOT_LOCALE',
+  'waitForChatbot',
+  'chatbot:ready',
+  'assistantLoading',
+  'assistantUnavailable',
   'Timeline',
   'За България',
   'от 99 лв./месец',
   'Асистент',
 ]) {
   if (!script.includes(text)) throw new Error(`Missing landing behavior: ${text}`);
+}
+for (const text of ['Start API first', 'Стартирайте API', 'startApiFirst']) {
+  if (script.includes(text)) throw new Error(`Dev-only prompt fallback leaked into landing script: ${text}`);
 }
 
 const translationsIndex = script.indexOf('const translations = {');
