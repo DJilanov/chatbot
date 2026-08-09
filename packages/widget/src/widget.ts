@@ -80,6 +80,7 @@ interface ChatbotWindow extends Window {
   Chatbot?: {
     open: () => void;
     close: () => void;
+    reset: () => void;
     send: (message: string) => Promise<void>;
     setLocale: (locale: string) => Promise<void>;
     isReady: () => boolean;
@@ -118,6 +119,7 @@ interface WidgetCopy {
   email: string;
   helpful: string;
   name: string;
+  newConversation: string;
   notHelpful: string;
   openChat: string;
   phone: string;
@@ -163,6 +165,7 @@ const persisted: PersistedState = {
   let open = false;
   let loading = false;
   let leadVisible = false;
+  let activeRequestId = 0;
 
   const host = document.createElement('div');
   host.id = `chatbot-widget-${siteId}`;
@@ -198,6 +201,9 @@ const persisted: PersistedState = {
       open = false;
       render();
       emit('close', { source: 'api' });
+    },
+    reset: () => {
+      resetConversation('api');
     },
     send: async (message: string) => {
       await sendMessage(message);
@@ -242,6 +248,7 @@ const persisted: PersistedState = {
       supportedLocales: config?.supportedLocales ?? ['bg', 'en'],
       fallbackLocale: config?.defaultLocale ?? 'bg',
     });
+    if (config && nextLocale === currentLocale) return;
     currentLocale = nextLocale;
     (window as ChatbotWindow).CHATBOT_LOCALE = nextLocale;
     if (!config) return;
@@ -250,6 +257,18 @@ const persisted: PersistedState = {
     if (localized?.enabled) config = localized;
     render();
     emit('locale', { locale: nextLocale });
+  }
+
+  function resetConversation(source: 'api' | 'button'): void {
+    activeRequestId += 1;
+    conversationId = null;
+    persisted.conversationId = null;
+    persisted.messages = [];
+    leadVisible = false;
+    loading = false;
+    writeState(storageKey, { conversationId, visitorId, messages: persisted.messages });
+    render();
+    emit('conversation_reset', { source });
   }
 
   function render(): void {
@@ -274,7 +293,10 @@ const persisted: PersistedState = {
           <strong>${escapeHtml(currentConfig.branding.title)}</strong>
           <span>${escapeHtml(currentConfig.branding.subtitle)}</span>
         </div>
-        <button class="chatbot-icon" type="button" data-close aria-label="${escapeHtml(copy.closeChat)}">x</button>
+        <div class="chatbot-header-actions">
+          <button class="chatbot-icon" type="button" data-reset aria-label="${escapeHtml(copy.newConversation)}">+</button>
+          <button class="chatbot-icon" type="button" data-close aria-label="${escapeHtml(copy.closeChat)}">x</button>
+        </div>
       </header>
       <div class="chatbot-ai-note">${escapeHtml(copy.aiNote)}</div>
       <div class="chatbot-messages" data-messages></div>
@@ -305,6 +327,9 @@ const persisted: PersistedState = {
       open = false;
       render();
       emit('close', { source: 'button' });
+    });
+    panel.querySelector('[data-reset]')?.addEventListener('click', () => {
+      resetConversation('button');
     });
     panel.querySelector<HTMLFormElement>('[data-chat-form]')?.addEventListener('submit', (event) => {
       event.preventDefault();
@@ -349,6 +374,8 @@ const persisted: PersistedState = {
 
   async function sendMessage(message: string): Promise<void> {
     if (!config || loading) return;
+    const requestId = activeRequestId + 1;
+    activeRequestId = requestId;
     loading = true;
     persisted.messages.push({ role: 'user', text: message });
     trimPersistedMessages();
@@ -372,6 +399,7 @@ const persisted: PersistedState = {
       });
       if (!response.ok) throw new Error(`chat_failed_${response.status}`);
       const result = (await response.json()) as ChatResponse;
+      if (requestId !== activeRequestId) return;
       conversationId = result.conversationId;
       visitorId = result.visitorId;
       leadVisible = result.needsLeadDetails;
@@ -393,14 +421,17 @@ const persisted: PersistedState = {
         productComparison: result.productComparison ?? null,
       });
     } catch {
+      if (requestId !== activeRequestId) return;
       persisted.messages.push({
         role: 'assistant',
         text: widgetCopy(currentLocale).assistantUnavailable,
       });
       emit('error', { stage: 'chat' });
     } finally {
-      loading = false;
-      render();
+      if (requestId === activeRequestId) {
+        loading = false;
+        render();
+      }
     }
   }
 
@@ -651,6 +682,7 @@ const persisted: PersistedState = {
 
   function emit(eventName: string, payload: unknown): void {
     for (const handler of handlers.get(eventName) ?? []) handler(payload);
+    if (eventName === 'locale') return;
     window.dispatchEvent(new CustomEvent(`chatbot:${eventName}`, { detail: payload }));
   }
 })();
@@ -894,6 +926,7 @@ const widgetCopyBg: WidgetCopy = {
   email: 'Email',
   helpful: 'Полезно',
   name: 'Име',
+  newConversation: 'Нов разговор',
   notHelpful: 'Не е полезно',
   openChat: 'Отвори чата',
   phone: 'Телефон',
@@ -925,6 +958,7 @@ const widgetCopyEn: WidgetCopy = {
   email: 'Email',
   helpful: 'Helpful',
   name: 'Name',
+  newConversation: 'New conversation',
   notHelpful: 'Not helpful',
   openChat: 'Open chat',
   phone: 'Phone',
@@ -963,6 +997,7 @@ function css(branding: WidgetBranding): string {
     .chatbot-heading { display: grid; min-width: 0; flex: 1; }
     .chatbot-heading strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; line-height: 18px; }
     .chatbot-heading span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.82; font-size: 12px; line-height: 16px; }
+    .chatbot-header-actions { display: flex; align-items: center; gap: 6px; }
     .chatbot-icon { width: 30px; height: 30px; border: 0; border-radius: 6px; color: #fff; background: rgba(255,255,255,0.16); cursor: pointer; }
     .chatbot-ai-note { padding: 8px 12px; border-bottom: 1px solid #eef1f5; color: #5c667a; background: #f8fafc; font-size: 11px; line-height: 15px; }
     .chatbot-messages { flex: 1; overflow: auto; padding: 14px 12px; background: #fff; }

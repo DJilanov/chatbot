@@ -72,8 +72,11 @@
 
     if (options.persist) writeStoredLocale(locale);
     if (options.notifyWidget) {
-      if (window.Chatbot?.setLocale) void window.Chatbot.setLocale(locale);
-      window.dispatchEvent(new CustomEvent('chatbot:locale', { detail: { locale } }));
+      if (window.Chatbot?.setLocale) {
+        void window.Chatbot.setLocale(locale);
+      } else {
+        window.dispatchEvent(new CustomEvent('chatbot:locale', { detail: { locale } }));
+      }
     }
   }
 

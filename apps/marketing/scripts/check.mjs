@@ -42,6 +42,7 @@ for (const text of [
   'https://chatbot.jilanov.com/assets/hero-assistant-dashboard.png',
   'data-cfasync="false"',
   'defer',
+  'demo-guardrails-20260809-3',
 ]) {
   if (!html.includes(text)) throw new Error(`Missing landing copy: ${text}`);
 }
@@ -69,10 +70,19 @@ for (const text of [
 for (const text of ['Start API first', 'Стартирайте API', 'startApiFirst']) {
   if (script.includes(text)) throw new Error(`Dev-only prompt fallback leaked into landing script: ${text}`);
 }
+if (script.includes('void window.Chatbot.setLocale(locale);\n      window.dispatchEvent')) {
+  throw new Error('Landing script must not notify widget locale through both API and global event');
+}
 
 const widget = await readFile(new URL('../public/vendor/widget.js', import.meta.url), 'utf8');
-for (const text of ['window.Chatbot', 'isReady', 'chatbot:${eventName}']) {
+for (const text of ['window.Chatbot', 'isReady', 'data-reset', 'conversation_reset', 'chatbot:${eventName}']) {
   if (!widget.includes(text)) throw new Error(`Missing widget browser API: ${text}`);
+}
+if (!widget.includes("eventName === 'locale'")) {
+  throw new Error('Widget must not re-emit chatbot:locale and trigger locale reload loops');
+}
+if (!widget.includes('config && nextLocale === currentLocale')) {
+  throw new Error('Widget locale switching must be idempotent for the active locale');
 }
 for (const pattern of [/\n\s*export\s/u, /\n\s*import\s/u]) {
   if (pattern.test(widget)) throw new Error('Widget vendor script contains module syntax');
