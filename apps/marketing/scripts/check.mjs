@@ -70,6 +70,14 @@ for (const text of ['Start API first', 'Стартирайте API', 'startApiFi
   if (script.includes(text)) throw new Error(`Dev-only prompt fallback leaked into landing script: ${text}`);
 }
 
+const widget = await readFile(new URL('../public/vendor/widget.js', import.meta.url), 'utf8');
+for (const text of ['window.Chatbot', 'isReady', 'chatbot:${eventName}']) {
+  if (!widget.includes(text)) throw new Error(`Missing widget browser API: ${text}`);
+}
+for (const pattern of [/\n\s*export\s/u, /\n\s*import\s/u]) {
+  if (pattern.test(widget)) throw new Error('Widget vendor script contains module syntax');
+}
+
 const translationsIndex = script.indexOf('const translations = {');
 const bootstrapIndex = script.lastIndexOf('bootstrap();');
 if (translationsIndex === -1 || bootstrapIndex === -1 || bootstrapIndex < translationsIndex) {
