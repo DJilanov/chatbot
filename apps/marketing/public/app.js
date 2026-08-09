@@ -286,12 +286,12 @@
 
   const translations = {
     en: {
-      title: 'Assistant SaaS | AI Sales and Support Assistant',
+      title: 'Assistant SaaS | AI Product and Support Assistant',
       description:
-        'Embed an AI assistant that answers from approved knowledge, captures leads, recommends products, routes support, and keeps an action audit trail.',
-      ogTitle: 'Assistant SaaS | AI Sales and Support Assistant',
+        'Add a managed AI assistant for ecommerce and service websites: approved answers, product guidance, lead capture, support handoff, and audit-ready actions.',
+      ogTitle: 'Assistant SaaS | AI Product and Support Assistant',
       ogDescription:
-        'A safe AI assistant for business websites and ecommerce stores: approved knowledge, lead capture, product guidance, human handoff, and action audit.',
+        'A managed AI assistant for business websites and online stores: product guidance, approved support answers, qualified leads, and clear human handoff.',
       messages: {
         bookedDemoChat: 'I booked a demo. My email is {email}',
         demoApiUnavailable: 'The demo API is unavailable right now. Please try again shortly.',
@@ -304,12 +304,12 @@
       text: {},
     },
     bg: {
-      title: 'Assistant SaaS | AI асистент за продажби и поддръжка',
+      title: 'Assistant SaaS | AI асистент за продукти и поддръжка',
       description:
-        'Вградете AI асистент, който отговаря от одобрени знания, събира лийдове, препоръчва продукти, насочва поддръжка и пази журнал на действията.',
-      ogTitle: 'Assistant SaaS | AI асистент за продажби и поддръжка',
+        'Добавете управляван AI асистент за онлайн магазини и сайтове за услуги: одобрени отговори, продуктови насоки, лийдове, support handoff и проследими действия.',
+      ogTitle: 'Assistant SaaS | AI асистент за продукти и поддръжка',
       ogDescription:
-        'Сигурен AI асистент за бизнес сайтове и онлайн магазини: одобрени знания, лийдове, продуктови насоки, човешко поемане и журнал на действията.',
+        'Управляван AI асистент за бизнес сайтове и онлайн магазини: продуктови насоки, одобрени support отговори, квалифицирани лийдове и ясно човешко поемане.',
       messages: {
         bookedDemoChat: 'Запазих демо. Моят email е {email}',
         demoApiUnavailable: 'Демо API временно не е достъпно. Моля, опитайте отново след малко.',
@@ -348,6 +348,154 @@
         },
       },
       text: {
+        'A 30-day pilot with clear acceptance criteria':
+          '30-дневен пилот с ясни критерии за приемане',
+        'A good demo shows more than a chat bubble. It shows the visitor question, the answer, the captured lead, the notification, and the audit record behind the action.':
+          'Доброто демо показва повече от чат балон. Показва въпроса на посетителя, отговора, събрания лийд, известието и журнала зад действието.',
+        'A managed AI assistant for business websites and online stores: product guidance, approved support answers, qualified leads, and clear human handoff.':
+          'Управляван AI асистент за бизнес сайтове и онлайн магазини: продуктови насоки, одобрени support отговори, квалифицирани лийдове и ясно човешко поемане.',
+        'A pilot should prove real conversations, qualified leads, staff handoffs, email delivery, product interest, and the unanswered questions that become the next knowledge update.':
+          'Пилотът трябва да докаже реални разговори, квалифицирани лийдове, предавания към екипа, email доставка, продуктов интерес и въпросите, които стават следващото обновяване на знанията.',
+        'Add a managed AI assistant for ecommerce and service websites: approved answers, product guidance, lead capture, support handoff, and audit-ready actions.':
+          'Добавете управляван AI асистент за онлайн магазини и сайтове за услуги: одобрени отговори, продуктови насоки, лийдове, support handoff и проследими действия.',
+        'AI assistant that helps visitors choose, ask, and buy':
+          'AI асистент, който помага на посетителите да избират, питат и купуват',
+        'Approved knowledge first': 'Първо одобрени знания',
+        'Approved knowledge is used before AI fallback.':
+          'Одобрените знания се използват преди AI fallback.',
+        'Answer from policy': 'Отговори от политики',
+        'Assistant SaaS | AI Product and Support Assistant':
+          'Assistant SaaS | AI асистент за продукти и поддръжка',
+        'Built for local teams that need practical automation':
+          'Създаден за екипи, които имат нужда от практична автоматизация',
+        'Business users maintain official answers for services, pricing, delivery, invoices, returns, warranty, and support.':
+          'Бизнес потребителите поддържат официални отговори за услуги, цени, доставка, фактури, връщания, гаранция и поддръжка.',
+        'Can my team edit answers?': 'Може ли екипът ми да редактира отговорите?',
+        'Capture name, email, phone, company, website URL, consent, source page, and the request that triggered the lead.':
+          'Събира име, email, телефон, фирма, URL на сайт, съгласие, източник и заявката, която е създала лийда.',
+        'Capture real intent': 'Събира реален интерес',
+        'Clean follow-up': 'Ясно последващо действие',
+        'Collect contact details, company context, product interest, and consent when the visitor is ready.':
+          'Събира контакт, фирмен контекст, продуктов интерес и съгласие, когато посетителят е готов.',
+        'Commerce mode connects the assistant to real product data and keeps customer actions tied to confirmed website events.':
+          'Commerce режимът свързва асистента с реални продуктови данни и държи клиентските действия вързани към потвърдени събития от сайта.',
+        'Commerce-ready path': 'Път към commerce',
+        'Completed by Resend provider': 'Завършено чрез Resend provider',
+        'Configured and reviewed by the Jilanov team':
+          'Настроено и преглеждано от екипа на Jilanov',
+        'Configure sites, edit knowledge, review leads, inspect analytics, and diagnose important answers.':
+          'Настройвате сайтове, редактирате знания, преглеждате лийдове, следите аналитика и диагностицирате важните отговори.',
+        'Conversation': 'Разговор',
+        'Conversation only': 'Само разговор',
+        'Conversation retention controls and privacy links for GDPR-ready deployments.':
+          'Контроли за задържане на разговори и privacy връзки за GDPR-ready внедрявания.',
+        'Controlled answers': 'Контролирани отговори',
+        'Controls for orders, prices, payments, and customer data':
+          'Контроли за поръчки, цени, плащания и клиентски данни',
+        'Domain allowlist, rate limits, output sanitization, and public widget token boundaries.':
+          'Domain allowlist, rate limits, output sanitization и граници на публичния widget token.',
+        'Deliver lead and support handoff notifications by email or webhook without losing the conversation context.':
+          'Изпраща известия за лийдове и support handoff по email или webhook, без да се губи контекстът на разговора.',
+        'FAQ answers, lead qualification, contact capture, demo routing, email notifications, webhooks, and analytics.':
+          'FAQ отговори, квалификация на лийдове, събиране на контакт, насочване към демо, email известия, webhooks и аналитика.',
+        'HubSpot planned': 'HubSpot планирано',
+        'I want to speak with support': 'Искам разговор с поддръжка',
+        'Inspect leads, conversations, support tickets, and action audit events.':
+          'Преглеждате лийдове, разговори, support tickets и събития в журнала на действията.',
+        'Lead': 'Лийд',
+        'Lead Assistant for one business website with knowledge answers, contact capture, and basic analytics.':
+          'Lead Assistant за един бизнес сайт с одобрени отговори, събиране на контакт и базова аналитика.',
+        'Leads, handoffs, and audit in one place':
+          'Лийдове, handoff-и и журнал на едно място',
+        'Let visitors try the assistant before they book':
+          'Нека посетителите пробват асистента преди среща',
+        'Live widget, admin workflow, and action audit make the product concrete. Clients can see how the assistant is configured, reviewed, and improved after launch.':
+          'Live widget, админ процесът и журналът правят продукта конкретен. Клиентите виждат как асистентът се настройва, преглежда и подобрява след старт.',
+        'Launch a controlled pilot without redesigning the site':
+          'Стартирайте контролиран пилот без redesign на сайта',
+        'Managed assistant for commerce teams':
+          'Управляван асистент за търговски екипи',
+        'Most teams do not want another tool to babysit. They need a reliable assistant that understands Bulgarian customers, respects company rules, and fits into the website they already operate.':
+          'Повечето екипи не искат още един инструмент за наблюдение. Трябва им надежден асистент, който разбира българските клиенти, спазва фирмените правила и влиза в сайта, който вече използват.',
+        'Natural Bulgarian by default': 'Естествен български по подразбиране',
+        'More usage, multiple users, knowledge history, webhooks, lead inbox, and deeper reporting.':
+          'Повече usage, много потребители, история на знанията, webhooks, lead inbox и по-дълбоки отчети.',
+        'Notify the team': 'Известяване на екипа',
+        'Packages aligned to the work the assistant handles':
+          'Пакети според работата, която асистентът поема',
+        'Pipedrive planned': 'Pipedrive планирано',
+        'Prices are starting points. The final offer depends on traffic, knowledge volume, ecommerce integrations, and whether your team or ours manages the assistant.':
+          'Цените са начални ориентири. Финалната оферта зависи от трафика, обема знания, ecommerce интеграциите и дали вашият или нашият екип управлява асистента.',
+        'Product discovery, product cards, comparison, cart handoff, checkout handoff, and order-support routing.':
+          'Откриване на продукти, продуктови карти, сравнение, предаване към количка, checkout handoff и насочване за поръчки.',
+        'Product feed, product cards, comparison, ecommerce handoff actions, and support queue.':
+          'Продуктов фийд, продуктови карти, сравнение, ecommerce handoff действия и support queue.',
+        'Product screens clients can inspect during the demo':
+          'Продуктови екрани, които клиентите виждат по време на демо',
+        'Product-aware answers without fake confirmations':
+          'Продуктови отговори без фалшиви потвърждения',
+        'Proof': 'Доказателства',
+        'Qualified requests arrive with contact details, page context, language, and the visitor\'s original need.':
+          'Квалифицираните заявки пристигат с контакт, контекст от страницата, език и първоначалната нужда на посетителя.',
+        'Review': 'Преглед',
+        'Review every action': 'Преглед на всяко действие',
+        'Safe product and checkout boundaries':
+          'Сигурни продуктови и checkout граници',
+        'See the assistant mapped to your website':
+          'Вижте асистента спрямо вашия сайт',
+        'See what was answered, what was blocked, what was handed off, and why.':
+          'Виждате какво е отговорено, какво е блокирано, какво е предадено към екип и защо.',
+        'See why the assistant answered, asked for contact details, created a handoff, or blocked an unsafe request.':
+          'Виждате защо асистентът е отговорил, поискал контакт, създал handoff или блокирал рискова заявка.',
+        'Send every qualified request to the right place':
+          'Изпраща всяка квалифицирана заявка към правилното място',
+        'Share your site, platform, main goal, and timeline. We will review the use case and show where the assistant can help without overpromising.':
+          'Споделете сайт, платформа, основна цел и срок. Ще прегледаме случая и ще покажем къде асистентът може да помогне без излишни обещания.',
+        'Show the full customer path in one glance':
+          'Покажете целия клиентски път с един поглед',
+        'Start small: configure the assistant, add the first approved answers, install the widget, and review the first conversations in the admin console.':
+          'Започнете малко: настройте асистента, добавете първите одобрени отговори, инсталирайте уиджета и прегледайте първите разговори в админ конзолата.',
+        'Start with questions and leads, then connect product feeds, product cards, comparison, and checkout handoff.':
+          'Започнете с въпроси и лийдове, после свържете продуктови фийдове, продуктови карти, сравнение и checkout handoff.',
+        'Start with leads. Add commerce when the data is ready.':
+          'Започнете с лийдове. Добавете commerce, когато данните са готови.',
+        'The assistant is measured by what it completes: answered questions, captured demand, support handoffs, product clicks, and clear records your team can review.':
+          'Асистентът се измерва по завършената работа: отговорени въпроси, събран интерес, support handoff-и, продуктови кликове и ясни записи за преглед.',
+        'The assistant should be helpful without pretending to complete sensitive work. Risky cases are routed to staff or require confirmation from the connected system.':
+          'Асистентът трябва да е полезен, без да се преструва, че е завършил чувствителни действия. Рисковите случаи се насочват към екип или изискват потвърждение от свързаната система.',
+        'The controls behind a reliable assistant':
+          'Контролите зад надежден асистент',
+        'The first release can focus on qualified requests. Once the product data is clean, the same assistant can support product discovery, comparison, and checkout handoff.':
+          'Първата версия може да се фокусира върху квалифицирани заявки. Когато продуктовите данни са подредени, същият асистент може да поддържа търсене на продукти, сравнение и checkout handoff.',
+        'The live widget, admin workflow, and action audit make the product concrete. Clients can see how the assistant is configured, reviewed, and improved after launch.':
+          'Live widget-ът, админ процесът и журналът правят продукта конкретен. Клиентите виждат как асистентът се настройва, преглежда и подобрява след старт.',
+        'The page includes the real embeddable widget. Prompt buttons open the assistant and send real demo messages, so prospects can judge the experience before a meeting.':
+          'Страницата включва реалния вграден widget. Prompt бутоните отварят асистента и изпращат реални demo съобщения, за да може клиентът да усети продукта преди среща.',
+        'The product combines the customer-facing chat with the operational tools teams need: knowledge, leads, support handoff, analytics, and action review.':
+          'Продуктът комбинира клиентския чат с оперативните инструменти, от които екипите имат нужда: знания, лийдове, support handoff, аналитика и преглед на действия.',
+        'The public assistant starts in Bulgarian and can switch to English for international visitors.':
+          'Публичният асистент започва на български и може да премине на английски за международни посетители.',
+        'Track answered, pending, completed, failed, and blocked actions with confidence, reason, and source context.':
+          'Следи отговорени, чакащи, завършени, неуспешни и блокирани действия с увереност, причина и източник.',
+        'Turn website conversations into handled work':
+          'Превърнете разговорите в сайта в свършена работа',
+        'Unresolved or sensitive cases become staff handoffs with transcript, reason, locale, page URL, and contact details.':
+          'Нерешените или чувствителни случаи стават handoff-и към екипа с transcript, причина, език, URL и контакти.',
+        'Use approved business knowledge for pricing, delivery, warranty, returns, and service rules.':
+          'Използва одобрени бизнес знания за цени, доставка, гаранция, връщане и сервизни правила.',
+        'We set up and maintain a website assistant that answers from approved business knowledge, guides shoppers to the right product, captures qualified requests, and hands sensitive cases to your team with a clear record of what happened.':
+          'Настройваме и поддържаме асистент за сайта, който отговаря от одобрени бизнес знания, насочва купувачите към правилния продукт, събира квалифицирани заявки и предава чувствителните случаи към екипа с ясен запис какво се е случило.',
+        'We configure the widget, prepare the first knowledge base, test real scenarios, and tune the assistant after launch.':
+          'Настройваме widget-а, подготвяме първата база знания, тестваме реални сценарии и настройваме асистента след старт.',
+        'Webhooks': 'Webhooks',
+        'What makes it operational, not just conversational':
+          'Какво го прави оперативен, не само разговорен',
+        'Widget experience': 'Widget изживяване',
+        'Works with your current site': 'Работи с текущия ви сайт',
+        'Your policies stay the source of truth':
+          'Вашите политики остават източникът на истината',
+        'Visible AI disclosure, saved conversation state, feedback buttons, lead fields, and prompt shortcuts.':
+          'Видимо AI обозначение, запазено състояние на разговора, бутони за обратна връзка, lead полета и prompt shortcuts.',
         'A chatbot is not the product. The outcome is.':
           'Чатботът не е продуктът. Резултатът е.',
         'A safer pitch for companies that cannot afford hallucinated operations':
@@ -386,10 +534,6 @@
         'Built from a production ecommerce assistant':
           'Изграден върху реален ecommerce асистент',
         'Business outcome': 'Бизнес резултат',
-        'Buyers care less about "AI magic" than whether the assistant can be trusted around orders, prices, payments, support, and customer data.':
-          'Купувачите се интересуват по-малко от "AI магия" и повече от това дали асистентът е надежден при поръчки, цени, плащания, поддръжка и клиентски данни.',
-        'Buyers pay when the assistant creates visible business work: answered questions, captured leads, routed support, and reviewable decisions.':
-          'Клиентите плащат, когато асистентът върши видима бизнес работа: отговорени въпроси, събрани лийдове, насочена поддръжка и решения за преглед.',
         'CSV product feed': 'CSV продуктов фийд',
         'Can it work with ecommerce platforms?': 'Работи ли с ecommerce платформи?',
         'Can it work with ecommerce?': 'Работи ли с онлайн магазини?',
@@ -472,14 +616,10 @@
         'Lead, handoff, action, or audit event':
           'Лийд, предаване към екип, действие или журнално събитие',
         'Lead capture': 'Събиране на лийдове',
-        'Let buyers try the product before they book':
-          'Дайте на купувачите да пробват продукта преди демо',
         'Limited transcript': 'Ограничен transcript',
         'Live demo': 'Демо',
         'Local service business': 'Локален бизнес с услуги',
         'Main goal': 'Основна цел',
-        'Made for businesses that want results, not another experiment':
-          'Създаден за бизнеси, които искат резултати, не пореден експеримент',
         'Managed': 'Managed',
         'Managed Assistant': 'Managed Assistant',
         'Managed implementation': 'Управлявано внедряване',
@@ -521,8 +661,6 @@
         'Product feed, product cards, comparison, checkout handoff, and return/warranty support routing.':
           'Продуктов фийд, продуктови карти, сравнение, checkout handoff и насочване за връщане/гаранция.',
         'Product overview': 'Преглед на продукта',
-        'Product surfaces buyers can inspect during the demo':
-          'Продуктови повърхности, които купувачите могат да видят по време на демо',
         'Product tour': 'Продуктова обиколка',
         'Product-aware answers with safe action boundaries':
           'Отговори с продуктово знание и сигурни граници за действия',
@@ -538,7 +676,6 @@
           'Насочва количка, checkout, любими, известия, поръчки, фактури, връщания и гаранционни заявки',
         'Route new opportunities fast': 'Насочва новите възможности бързо',
         'Safety': 'Сигурност',
-        'Sales pitch': 'Продажбен аргумент',
         'Sales follow-up': 'Последваща продажбена работа',
         'See how the assistant would work on your website':
           'Вижте как асистентът би работил на вашия сайт',
@@ -553,6 +690,8 @@
           'Настройка, писане на знания, месечен QA, настройка на безопасността, проверки на продуктовия фийд и оптимизация.',
         'Setup, knowledge writing, product feed QA, monthly conversation review, safety tuning, and conversion optimization.':
           'Настройка, писане на знания, QA на продуктов фийд, месечен преглед на разговори, безопасност и оптимизация на конверсията.',
+        'Setup, knowledge writing, product-feed QA, monthly conversation review, safety tuning, and conversion optimization.':
+          'Настройка, писане на знания, product-feed QA, месечен преглед на разговори, safety tuning и оптимизация на конверсията.',
         'Share your site, ecommerce platform, main goal, and timeline. The form submits to the demo API and stores the request as a qualified lead.':
           'Споделете сайта, ecommerce платформата, основната цел и срок. Формата изпраща заявка към demo API и я записва като квалифициран лийд.',
         'Shopify planned': 'Shopify планирано',
@@ -569,8 +708,6 @@
           'Започнете с лийдове, после добавете продуктови фийдове, продуктови карти, сравнение, checkout handoff и насочване към поддръжка.',
         'Starter': 'Starter',
         'Support queue': 'Опашка за поддръжка',
-        'The MVP is intentionally simple: configure the assistant, add knowledge, install the widget, then watch conversations and leads arrive in the admin console.':
-          'MVP-то е умишлено просто: настройвате асистента, добавяте знания, инсталирате уиджета и следите разговорите и лийдовете в админ конзолата.',
         'The assistant is built around operational outcomes: answer, qualify, route, hand off, or log for review. That is what makes it easier to sell than a generic chatbot.':
           'Асистентът е изграден около оперативни резултати: отговор, квалификация, насочване, предаване към екип или запис за преглед. Това го прави по-лесен за продажба от стандартен чатбот.',
         'The assistant uses approved knowledge first and routes uncertain or sensitive cases to staff. It should not invent prices, order status, payment status, delivery status, returns, warranty decisions, or unsupported operational facts.':
@@ -579,14 +716,10 @@
           'Commerce пакетът трябва да продава разликата между "ботът каза нещо" и "системата безопасно насочи следващата стъпка."',
         'The landing page includes the actual embeddable widget. These prompt buttons open the demo assistant and send real messages to the local demo API when it is running.':
           'Лендинг страницата включва реалния вграден уиджет. Тези бутони отварят demo асистента и изпращат реални съобщения към demo API, когато работи.',
-        'The page leads with the actual widget, the admin workflow, and the action audit because these are the surfaces that prove the assistant is operational software, not a prompt demo.':
-          'Страницата показва реалния уиджет, админ процеса и журнала на действията, защото те доказват, че асистентът е оперативен софтуер, не prompt demo.',
         'The product includes retention settings, privacy links, consent-aware lead capture, data export, erasure workflows, and action logs. Production deployments should pair this with the customer\'s privacy policy and legal documents.':
           'Продуктът включва настройки за задържане на данни, privacy links, събиране на лийдове със съгласие, експорт, изтриване и журнал на действията. В продукция това трябва да се съчетае с политиката за поверителност и правните документи на клиента.',
         'The sellable entry point is the Lead Assistant. Commerce expands the same assistant into product discovery, comparison, and checkout handoff once a store integration is connected.':
           'Продаваемият старт е Lead Assistant. Commerce разширява същия асистент към откриване на продукти, сравнение и предаване към checkout след свързване на магазин.',
-        'These are the surfaces that prove the assistant is operational software, not a prompt demo.':
-          'Това са повърхностите, които доказват, че асистентът е оперативен софтуер, не prompt demo.',
         'The visitor experience defaults to Bulgarian and switches to English when the browser asks for it.':
           'Потребителското изживяване започва на български и превключва към английски, когато браузърът го поиска.',
         'Try live assistant': 'Пробвай асистента',

@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /console/
+Disallow: /admin/
+Disallow: /public/
+Disallow: /health
+
+Sitemap: https://chatbot.jilanov.com/sitemap.xml

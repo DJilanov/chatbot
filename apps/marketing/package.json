@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node scripts/sync-widget.mjs && node scripts/check.mjs",
-    "type-check": "node scripts/sync-widget.mjs && node scripts/check.mjs",
+    "build": "node scripts/sync-widget.mjs && node scripts/generate-seo-pages.mjs && node scripts/check.mjs",
+    "type-check": "node scripts/sync-widget.mjs && node scripts/generate-seo-pages.mjs && node scripts/check.mjs",
     "dev": "node scripts/sync-widget.mjs && node scripts/serve.mjs"
   }
 }

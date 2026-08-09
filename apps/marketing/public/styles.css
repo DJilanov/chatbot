@@ -975,6 +975,99 @@ h3 {
   min-width: max-content;
 }
 
+.seo-page {
+  background: #f7f9fc;
+}
+
+.seo-nav {
+  position: sticky;
+}
+
+.seo-hero {
+  position: relative;
+  min-height: 72vh;
+  display: grid;
+  align-items: center;
+  overflow: hidden;
+  padding: 112px clamp(18px, 5vw, 72px) 58px;
+  color: #fff;
+}
+
+.seo-hero > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.seo-hero-content {
+  position: relative;
+  max-width: 850px;
+}
+
+.seo-hero-content p {
+  max-width: 720px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 20px;
+  line-height: 1.55;
+}
+
+.seo-content .section-heading {
+  max-width: 980px;
+}
+
+.seo-card-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.seo-card-grid article,
+.related-pages,
+.seo-demo {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.seo-card-grid article {
+  padding: 22px;
+}
+
+.seo-card-grid span {
+  color: var(--green);
+  font-weight: 900;
+}
+
+.seo-card-grid p {
+  margin: 14px 0 0;
+  color: var(--ink);
+  line-height: 1.55;
+}
+
+.related-pages div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.related-pages a {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 12px;
+  color: var(--navy);
+  background: #fff;
+  font-weight: 800;
+}
+
+.seo-demo {
+  align-items: center;
+}
+
 @media (max-width: 980px) {
   .site-nav nav,
   .nav-cta {
@@ -996,12 +1089,17 @@ h3 {
   .surface-grid,
   .local-grid,
   .pilot-layout,
-  .pilot-tracks {
+  .pilot-tracks,
+  .seo-card-grid {
     grid-template-columns: 1fr;
   }
 
   .hero {
     min-height: 88vh;
+  }
+
+  .seo-hero {
+    min-height: 68vh;
   }
 
   .hero-overlay {
